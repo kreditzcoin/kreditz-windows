@@ -11,12 +11,12 @@ function HashMD5File(FileToHash:String):String;
 function HashMD5String(StringToHash:String):String;
 function RunMiner(aParam:Pointer):PtrInt;
 Procedure CloseAllMiningThreads();
-function VerifyMinerResult(Solution,Difficulty,Target:String;block:integer):integer;
+function VerifyMinerResult(Solution,Difficulty,Target:String;block:int64):int64;
 function RunOpenSSLCommand(textline:String):boolean;
 function CreateKeysPair():Boolean;
 function GetPublicKeyFromPem():String;
 function GetPrivateKeyFromPem():String;
-function GetHashSeed(longitude:integer):String;
+function GetHashSeed(longitude:int64):String;
 function HashSha256String(StringToHash:string):string;
 function GetAddressFromPublicKey(PubKey:String):String;
 function IsValidAddress(Address:String):boolean;
@@ -107,7 +107,7 @@ end;
 // CLOSE ALL OPENEND MINING THREADS
 Procedure CloseAllMiningThreads();
 Var
-  Counter : Integer;
+  Counter : integer;
 Begin
 for counter := 0 to Length(ArrayThreads)-1 do
    begin
@@ -124,12 +124,12 @@ SetLength(ArrayThreads,0);
 End;
 
 // VERIFY THE BLOCK SOLUTION
-function VerifyMinerResult(Solution,Difficulty,Target:String;block:integer):integer;
+function VerifyMinerResult(Solution,Difficulty,Target:String;block:int64):int64;
 var
-  chars,steps,solutionlength:Integer;
+  chars,steps,solutionlength:int64;
   SLSolutions : TStringList;
-  Contador : Integer;
-  FisrtChar : Integer;
+  Contador : integer;
+  FisrtChar : int64;
   CurrTarget : String;
 Begin
 Result := 0;
@@ -295,9 +295,9 @@ else result := 'Err';
 end;
 
 // RETURN THE HASH SEED FOR THE MINER
-function GetHashSeed(longitude:integer):String;
+function GetHashSeed(longitude:int64):String;
 var
-  contador : Integer;
+  contador : integer;
 begin
 result := '';
 for contador := 1 to longitude do

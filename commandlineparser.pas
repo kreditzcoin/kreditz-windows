@@ -9,7 +9,7 @@ uses
 
    Procedure ParseCommandLine(Linetext:String);
    Function GetCommandLineCommand(LineText:String):String;
-   Function GetParameterFromCommandLine(LineText:String;ParamNumber:Integer):String;
+   Function GetParameterFromCommandLine(LineText:String;ParamNumber:int64):String;
    procedure ShowHelp();
    procedure ShowNodes();
    procedure ShowBLNodes();
@@ -34,12 +34,12 @@ uses
    procedure ShowSha256String(linetext:String);
    Procedure CheckAddress(linetext:String);
    Procedure MinerInfo();
-   Procedure ClientCount();
    Procedure SetCPUMiners(linetext:String);
    Procedure MinToTask(linetext:String);
    Procedure AutoConn(linetext:String);
    Procedure FullNode(linetext:String);
    Procedure UpdateNodes(linetext:String);
+   Procedure ShowMinned(linetext:String);
 
 implementation
 
@@ -90,13 +90,13 @@ else if UpperCase(CommandUsed) = 'OPENSSL' then RunOpenSSLCommand(linetext)
 else if UpperCase(CommandUsed) = 'SHA256' then ShowSha256String(linetext)
 else if UpperCase(CommandUsed) = 'CHECKADDRESS' then CheckAddress(linetext)
 else if UpperCase(CommandUsed) = 'MINERINFO' then Minerinfo()
-else if UpperCase(CommandUsed) = 'CLIENTCOUNT' then ClientCount()
 else if UpperCase(CommandUsed) = 'CPUCOUNT' then OutputText('CPUs: '+IntToStr(MAIN_CPUCOUNT))
 else if UpperCase(CommandUsed) = 'CPUMINE' then SetCPUMiners(linetext)
 else if UpperCase(CommandUsed) = 'MINTOTASK' then MinToTask(linetext)
 else if UpperCase(CommandUsed) = 'AUTOCONN' then AutoConn(linetext)
 else if UpperCase(CommandUsed) = 'FULLNODE' then FullNode(linetext)
 else if UpperCase(CommandUsed) = 'UPDATENODES' then UpdateNodes(linetext)
+else if UpperCase(CommandUsed) = 'SHOWMINNED' then ShowMinned(linetext)
 
 else OutPutText('Unknown command: '+CommandUsed,false);
 end;
@@ -106,7 +106,7 @@ Function GetCommandLineCommand(LineText:String):String;
 var
   Temp : String = '';
   ThisChar : Char;
-  Contador : Integer = 1;
+  Contador : int64 = 1;
 Begin
 while contador <= Length(LineText) do
    begin
@@ -123,12 +123,12 @@ Result := Temp;
 End;
 
 // GET A DETERMINED PARAMETER FROM COMMANDLINE
-Function GetParameterFromCommandLine(LineText:String;ParamNumber:Integer):String;
+Function GetParameterFromCommandLine(LineText:String;ParamNumber:int64):String;
 var
   Temp : String = '';
   ThisChar : Char;
-  Contador : Integer = 1;
-  WhiteSpaces : Integer = 0;
+  Contador : int64 = 1;
+  WhiteSpaces : int64 = 0;
 Begin
 while contador <= Length(LineText) do
    begin
@@ -164,7 +164,7 @@ end;
 // SHOWS NODES
 procedure ShowNodes();
 Var
-  contador:integer=0;
+  contador:int64=0;
 Begin
 while contador < length(arraynodos) do
    begin
@@ -177,7 +177,7 @@ end;
 // SHOWS BLACKLISTED NODES
 procedure ShowBLNodes();
 Var
-  contador:integer=0;
+  contador:int64=0;
 Begin
 while contador < length(ArrayBlacklisted) do
    begin
@@ -215,14 +215,14 @@ end;
 // DELETE A NODE
 Procedure DeleteNode(linetext:String);
 var
-  NodeNumber : Integer;
+  NodeNumber : int64;
 Begin
 if not IsValidInt(GetParameterFromCommandLine(linetext,1)) then
    begin
    OutPutText('Invalid Parameter: '+GetParameterFromCommandLine(linetext,1),false);
    exit;
    end;
-NodeNumber := StrToInt(GetParameterFromCommandLine(linetext,1));
+NodeNumber := StrToInt64(GetParameterFromCommandLine(linetext,1));
 if NodeNumber > Length(ArrayNodos) then
    begin
    OutPutText('Parameter '+IntToStr(NodeNumber)+' out of bounds',false);
@@ -235,14 +235,14 @@ End;
 // DELETE A BLACKLISTED NODE
 Procedure DeleteBLNode(linetext:String);
 var
-  NodeNumber : Integer;
+  NodeNumber : int64;
 Begin
 if not IsValidInt(GetParameterFromCommandLine(linetext,1)) then
    begin
    OutPutText('Invalid Parameter: '+GetParameterFromCommandLine(linetext,1),false);
    exit;
    end;
-NodeNumber := StrToInt(GetParameterFromCommandLine(linetext,1));
+NodeNumber := StrToInt64(GetParameterFromCommandLine(linetext,1));
 DeleteBlackListedNode(NodeNumber-1); // -1 Since arraynodos is 0 indexed
 OutPutText('Blacklisted Node '+IntToStr(NodeNumber)+' deleted',false);
 End;
@@ -335,7 +335,7 @@ End;
 // SHOW ALL ACCOUNTS
 procedure showaccounts();
 var
-  contador : integer = 0;
+  contador : int64 = 0;
   DataRead : AccountData;
   Registered : String;
 begin
@@ -346,7 +346,7 @@ while contador < filesize(FilaAccData) do
    seek(FilaAccData,contador);
    read(FilaAccData,DataRead);
    if DataRead.PublicKey <> '' then Registered := 'REGISTERED' else Registered :='Unreg';
-   outputtext(IntToStr(contador)+' - '+copy(DataRead.Hash,1,8)+' - '+Int2CurrencyStr(StrToInt(Dataread.Balance))+' '+Registered+' '+Dataread.Lastop,false);
+   outputtext(IntToStr(contador)+' - '+copy(DataRead.Hash,1,8)+' - '+Int2CurrencyStr(StrToInt64(Dataread.Balance))+' '+Registered+' '+Dataread.Lastop,false);
    contador := contador +1;
    end;
 closefile(FilaAccData);
@@ -383,16 +383,16 @@ end;
 Procedure SendFunds(linetext:string);
 var
   Destination, Amount : String;
-  Monto, comision, MontoMasComision, Restante : Integer;
-  Contador : integer;
-  MontoFromAddress : Integer;
+  Monto, comision, MontoMasComision, Restante : int64;
+  Contador : int64;
+  MontoFromAddress : int64;
 Begin
 Destination := GetParameterFromCommandLine(linetext,1);
 Amount := GetParameterFromCommandLine(linetext,2);
 if IsValidInt(Destination) then
    begin
-   Destination := GetAddressFromAccountNumber(StrToInt(Destination));
-   if StrToInt(GetAccountNumberFromAddress(Destination)) < 0 then
+   Destination := GetAddressFromAccountNumber(StrToInt64(Destination));
+   if StrToInt64(GetAccountNumberFromAddress(Destination)) < 0 then
       begin
       Outputtext('Account number do not exists',false);
       ShowAlert('Account number do not exists');
@@ -405,14 +405,16 @@ if ((Destination = '') or (not IsValidAddress(Destination))) then
    ShowAlert('Invalid Destination'+destination);
    exit;
    end;
-
 if IsAddressMine(Destination)>=0 then
    begin
    Outputtext('Can not send to your addresses',false);
    ShowAlert('Can not send to your addresses');
    exit;
    end;
-if IsValidInt(Amount) then Monto := StrToInt(Amount)
+if IsValidFLoat(Amount) then
+   begin
+   Monto := Round(StrToFloat(Amount)*100);
+   end
 else
    begin
    Outputtext('Invalid Amount',false);
@@ -437,7 +439,7 @@ Restante := MontoMasComision;
 Contador := length(ArrayMyAddresses)-1;
 While Restante > 0 do
    begin
-   if StrToInt(ArrayMyAddresses[contador].Balance) > 0 then
+   if StrToInt64(ArrayMyAddresses[contador].Balance) > 0 then
       begin
       MontoFromAddress := SendFundsFromAddress(Destination, contador, Restante);
       Restante := Restante - MontoFromAddress;
@@ -507,12 +509,14 @@ if not IsValidInt(GetParameterFromCommandLine(linetext,1)) then
    begin
    OutPutText('ERROR: Invalid Parameter: '+GetParameterFromCommandLine(linetext,1),false);
    EditUserPort.Text := OptionsData.ListeningPort;
+   ShowMensaje(false);
    exit;
    end;
 PortNumber := GetParameterFromCommandLine(linetext,1);
 OptionsData.ListeningPort:=PortNumber;
 OutPutText('New Listening port set'+SLineBreak+'Change will be effective on next connection',false);
 U_SaveOptions := true;
+ShowMensaje(true);
 End;
 
 // SHOWS THE SHA256 OF THE GIVEN PARAMETER
@@ -549,12 +553,6 @@ OutputText('MINER_FoundedSteps    : '+IntToStr(MINER_FoundedSteps),false);
 OutputText('MINER_Steps           : '+IntToStr(MINER_Steps),false);
 End;
 
-// SHOWS THE SERVER CLIENT COUNT // DEPRECATED
-Procedure ClientCount();
-Begin
-OutputText('TCPServer Client count: '+IntToStr(ClientsCount),false);
-end;
-
 // SET THE NUMBER OF MINING CPUS
 Procedure SetCPUMiners(linetext:String);
 var
@@ -563,17 +561,22 @@ Begin
 if not IsValidInt(GetParameterFromCommandLine(linetext,1)) then
    begin
    OutPutText('ERROR: Invalid Parameter: '+GetParameterFromCommandLine(linetext,1),false);
+   ShowMensaje(false);
    exit;
    end;
 CPUsNumber := GetParameterFromCommandLine(linetext,1);
-if ((StrToInt(CPUsNumber) < 1) or (StrToInt(CPUsNumber)>MAIN_CPUCOUNT)) then
+if ((StrToInt64(CPUsNumber) < 1) or (StrToInt64(CPUsNumber)>MAIN_CPUCOUNT)) then
    begin
    OutPutText('ERROR: Mining CPUs range: 1 to '+IntToStr(MAIN_CPUCOUNT),false);
+   ShowMensaje(false);
    exit;
    end;
 OutPutText('Mining CPUs set to: '+CPUsNumber,false);
-OptionsData.CPUmining := StrToInt(CPUsNumber);
+OptionsData.CPUmining := StrToInt64(CPUsNumber);
 U_SaveOptions := true;
+ShowMensaje(true);
+CloseAllMiningThreads();
+Miner_IsMineron := false;
 End;
 
 // SET MINIMIZE TO TRAY OPTION
@@ -586,11 +589,15 @@ if UpperCase(Option)='ON' then
    begin
    OptionsData.MinimToTray:=true;
    U_SaveOptions := true;
+   CheckBoxMin.Checked:=true;
+   ShowMensaje(true);
    end
 else if UpperCase(Option)='OFF' then
    begin
    OptionsData.MinimToTray:=false;
    U_SaveOptions := true;
+   CheckBoxMin.Checked:=false;
+   ShowMensaje(true);
    end
 else OutputText('Invalid Parameter. Use ON of OFF',false);
 End;
@@ -605,11 +612,15 @@ if UpperCase(Option)='ON' then
    begin
    OptionsData.AutoConnect:=true;
    U_SaveOptions := true;
+   CheckBoxAutoConn.Checked:=true;
+   ShowMensaje(true);
    end
 else if UpperCase(Option)='OFF' then
    begin
    OptionsData.AutoConnect:=false;
    U_SaveOptions := true;
+   CheckBoxAutoConn.Checked:=false;
+   ShowMensaje(true);
    end
 else OutputText('Invalid Parameter. Use ON of OFF',false);
 End;
@@ -624,11 +635,15 @@ if UpperCase(Option)='ON' then
    begin
    OptionsData.FullNode:=true;
    U_SaveOptions := true;
+   CheckBoxFullNode.Checked:=true;
+   ShowMensaje(true);
    end
 else if UpperCase(Option)='OFF' then
    begin
    OptionsData.FullNode:=false;
    U_SaveOptions := true;
+   CheckBoxFullNode.Checked:=false;
+   ShowMensaje(true);
    end
 else OutputText('Invalid Parameter. Use ON of OFF',false);
 End;
@@ -643,19 +658,43 @@ if UpperCase(Option)='ON' then
    begin
    OptionsData.GetNodes:=true;
    U_SaveOptions := true;
+   CheckBoxUpdateNodes.Checked:=true;
    ShowMensaje(true);
    end
 else if UpperCase(Option)='OFF' then
    begin
    OptionsData.GetNodes:=false;
    U_SaveOptions := true;
+   CheckBoxUpdateNodes.Checked:=false;
    ShowMensaje(true);
    end
 else OutputText('Invalid Parameter. Use ON of OFF',false);
 End;
 
-
-
+// SET SHOW MINNED TRXS
+Procedure ShowMinned(linetext:String);
+var
+  Option : string;
+Begin
+Option := GetParameterFromCommandLine(linetext,1);
+if UpperCase(Option)='ON' then
+   begin
+   OptionsData.ShowMinned:=true;
+   U_SaveOptions := true;
+   CheckBoxMinned.Checked := true;
+   ShowMensaje(true);
+   UpdateUserTrxs();
+   end
+else if UpperCase(Option)='OFF' then
+   begin
+   OptionsData.ShowMinned:=false;
+   U_SaveOptions := true;
+   CheckBoxMinned.Checked := false;
+   ShowMensaje(true);
+   UpdateUserTrxs();
+   end
+else OutputText('Invalid Parameter. Use ON of OFF',false);
+End;
 
 END. // END UNIT
 

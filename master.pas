@@ -17,7 +17,7 @@ type
 
   conectiondata = Packed Record
      Autentic: boolean;
-     Connections : Integer;
+     Connections : int64;
      tipo: string[255];
      ip: string[255];
      lastping: string[255];
@@ -36,11 +36,12 @@ type
      OpenSSLPath : String[255];
      Mining: boolean;
      Reconnect : Boolean;
-     CPUmining : Integer;
+     CPUmining : int64;
      MinimToTray : Boolean;
      AutoConnect : Boolean;
      FullNode : Boolean;
      GetNodes : Boolean;
+     ShowMinned : Boolean;
      end;
 
   AccountData = Packed Record
@@ -72,8 +73,8 @@ type
      Difficult : String[3];
      NxtBlkDiff : String[3];
      BlockHash : String[40];
-     Solution : String[255];
      AccountMiner : String[40];
+     MinerFee : String[10];
      end;
 
   WalletData = Packed Record
@@ -87,45 +88,48 @@ type
      PublicKey : String[255];
      PrivateKey : String[255];
      Balance : String[13];
-     RegisterStatus : Integer;
+     RegisterStatus : int64;
      end;
 
   BlockHeaderData = Packed Record
      Number         : Int64;
      TimeStart      : Int64;
      TimeEnd        : Int64;
-     TimeTot        : Integer;
-     TrxTot         : integer;
+     TimeTot        : int64;
+     TrxTot         : int64;
      TargetHash     : String[34];
      Difficult      : String[3];
      NxtBlkDiff     : String[3];
      AccountMiner   : String[40];
      MinerFee       : Int64;
      Reward         : Int64;
-     SolutionLength : Integer;
+     SolutionLength : int64;
      end;
 
+  BlockArrTrxsData = array of TranxData;
+
   // Operative functions
-  function Int2CurrencyStr(Value: integer): string;
+  function Int2CurrencyStr(Value: int64): string;
   function IsValidInt(cadena:string):boolean;
+  function IsValidFloat(cadena:String):Boolean;
   procedure UpdateLabels();
   procedure Outputtext(TextToShow:String;showhour:boolean=true);
   procedure ClearMemoLines();
   procedure LoadWalletData();
   Procedure SaveAddressesToDisk();
   function verifyfiles():boolean;
-  function IsAddressMine(address:string):integer;
+  function IsAddressMine(address:string):int64;
   function GetTotalAccountBalance():Int64;
   function GetTotalAccountPendingPayments():Int64;
   function GetAddressAvailable(Address:String): Int64;
   function GetAccountNumberFromAddress(address:string):string;
-  function GetAddressFromAccountNumber(Accnumber:integer):String;
+  function GetAddressFromAccountNumber(Accnumber:int64):String;
   function GetAddressBalanceFromDisk(Account:String):Int64;
   function GetAddressPubKey(Address:String):String;
   procedure CheckIfMyAddressesNeedsRegisterFromDisk();
   procedure AddAddressIfNotExists(address:string);
   Procedure VerifyUserAddressesForAcre();
-  function GetReachableNodes():Integer;
+  function GetReachableNodes():int64;
   function GetOpenSSLPath():String;
   procedure UpdatePanelStatus();
   procedure UpdatePanelServer();
@@ -136,6 +140,7 @@ type
   procedure UpdatePanelMiner();
   Procedure UpdateMyPendingTxs();
   Procedure ShowMensaje(Exito:Boolean);
+  Procedure UpdateUserTrxs();
 
   // Nodes
   function NodeExists(ip,port:String):boolean;
@@ -144,8 +149,8 @@ type
   Procedure LoadBLNodesFromDisk();
   procedure AddNewNode(Address,Port:String);
   Procedure AddNewBLNode(Address,Port:String);
-  procedure DeleteExistingNode(Number:Integer);
-  Procedure DeleteBlackListedNode(Number:Integer);
+  procedure DeleteExistingNode(Number:int64);
+  Procedure DeleteBlackListedNode(Number:int64);
   Procedure SaveNodesToDisk();
   Procedure SaveBLNodesToDisk();
   Procedure DeleteNodeAddress(Address:String);
@@ -153,38 +158,44 @@ type
   function LoadOptionsFromDisk(): UserData;
   procedure SaveOptionsToDisk();
   // updates network values: returns the slot number with the info
-  function UpdateNetworkLastBlockData():Integer;
-  function UpdateNetworkAccountSumData(): Integer;
-  function UpdateNetworkPendingData():Integer;
+  function UpdateNetworkLastBlockData():int64;
+  function UpdateNetworkAccountSumData(): int64;
+  function UpdateNetworkPendingData():int64;
   // Updates local values
-  function GetMyLastUpdatedBlock():Integer;
+  function GetMyLastUpdatedBlock():int64;
   function GetMyLastBLockHash(Lastblock:String):String;
-  function GetLastAccountUpdated():Integer;
+  function GetLastAccountUpdated():int64;
   function GetMyAccSumHash():String;
 
-  function BlockSumLastBlock():Integer;
-  function GetBlockData(blnumber:Integer):BlockSumData;
-  function GetBlockDataFromDisk(BlockNumber:Integer):BlockSumData;
+  function BlockSumLastBlock():int64;
+  function GetBlockData(blnumber:int64):BlockSumData;
+  function GetBlockDataFromDisk(BlockNumber:int64):BlockSumData;
   Procedure BuildBlockSum();
   Procedure AdjustBlockSum();
+  // built trxs
+  function GetMyLastUpdatedBlockTrxs():integer;
+  Procedure SetMyLastUpdatedBlockTrxs(Number:integer);
+  function GetBlockTrxsFromDisk(BlockNumber:integer):BlockArrTrxsData;
+  procedure SaveToMyTrxs(transaction : TranxData);
+  Procedure BuiltMyTrxs();
+
 
   // Connections management
-  function ClientsCount : Integer ;
-  function GetActiveConex(tipo:string):Integer;
-  function GetTotalConex():Integer;
-  function SaveConection(tipo,ipuser,timestamp:String;contextdata:TIdContext;clientnumber:string):integer;
+  function GetActiveConex(tipo:string):int64;
+  function GetTotalConex():int64;
+  function SaveConection(tipo,ipuser,timestamp:String;contextdata:TIdContext;clientnumber:string):int64;
   function ClearConection(tipo,ipuser:string):boolean;
-  function GetFreeConexSlot():Integer;
-  function GetFreeCliente():Integer;
-  function ConnectClient(Address,Port:String):integer;
+  function GetFreeConexSlot():int64;
+  function GetFreeCliente():int64;
+  function ConnectClient(Address,Port:String):int64;
   function AreWeConnectedTo(address:String):Boolean;
-  function GetSlotFromIP(Ip:String):Integer;
+  function GetSlotFromIP(Ip:String):int64;
   Procedure ConnectToServers();
-  Procedure TryConnectToNode(NodeNumber:Integer);
+  Procedure TryConnectToNode(NodeNumber:int64);
   procedure CloseConectionsToServers();
   procedure TurnListenOff();
   procedure TurnListenOn();
-  procedure CloseConnectionSlot(Slot:Integer);
+  procedure CloseConnectionSlot(Slot:int64);
 
 Const
   CONST_ArchivoNodos = 'DATA/nodes.min';
@@ -194,11 +205,12 @@ Const
   CONST_DirBlocks = 'DATA/BLOCKS/';
   CONST_ArchivoWallet = 'DATA/wallet.dat';
   CONST_ArchivoBlockSum = 'DATA/blocksum.dat';
+  CONST_ArchivoMyTxs = 'DATA/mytxs.kdz';
 
   CONST_MinimunConnectionsToWork = 1;
   CONST_PinsToStart = CONST_MinimunConnectionsToWork*2;
   CONST_BlockSummaryLength = 20;
-  CONST_ExpectedBlockDuration = 180;
+  CONST_ExpectedBlockDuration = 300;
   CONST_DefaultServerPort = 8080;
   CONST_MaxIncomingConections = 5;
   CONST_MaxOutgoingConections = 5;
@@ -216,6 +228,8 @@ Var
   FilaWallet : file of WalletData;
      U_SaveWallet : boolean = false;
   FilaSumary : file of BlocksumData;
+  FilaMytxs : file of TranxData;
+    U_RebuildMyTxs : Boolean = false;
 
   OptionsData : UserData; // Options values
   LastCommandline : String = '';
@@ -223,68 +237,71 @@ Var
   OpenSSLPath : String = '';
 
   CONNECT_LastTime : Int64 = 0;
-  CONNECT_LastNode : Integer = 0;
+  CONNECT_LastNode : int64 = 0;
 
   STATUS_Connected : boolean = false;
   STATUS_Synzed : boolean = false;
-    STATUS_LastBlockRequested : Integer = 0;
+    STATUS_LastBlockRequested : int64 = 0;
     STATUS_LastAccountRequested : boolean = false;
   STATUS_Updated: boolean = false;
-  STATUS_IncomingPings : Integer = 0;
-  STATUS_LastPing : Integer = 0;
+  STATUS_IncomingPings : int64 = 0;
+  STATUS_LastPing : int64 = 0;
 
   LASTBLOCK_PendingTxs : TStringlist;
-  LASTBLOCK_UNDONE : Integer = 0;
+  LASTBLOCK_UNDONE : int64 = 0;
   LASTBLOCK_ArrBlockSum : Array of BlockSumData;
   LASTBLOCK_ArrMyAddresses : Array of MyWalletData;
-  LASTBLOCK_Duration : Integer;
+  LASTBLOCK_Duration : int64;
 
+  MAIN_FirstFormShow : boolean = true;
+  MAIN_MinOnTray : boolean = false;
   MAIN_AccountNumber : String = '';
     U_MyAccountNumber : boolean = false;
   MAIN_AccountHash: String = '';
-  MAIN_AccountBalance : Integer = 0;
+  MAIN_AccountBalance : int64 = 0;
     U_MyBalance : boolean = false;
   MAIN_AccountPublic : String = '';
   MAIN_AccountPrivate : String = '';
-  MAIN_Version : string = '0.180730';
+  MAIN_Version : string = '0.180806';
   MAIN_USER_IP : String = '';
-  MAIN_CPUCOUNT : Integer = 0;
+  MAIN_CPUCOUNT : int64 = 0;
+  MAIN_ProgramStarted : boolean = false;
 
   MINER_IsMinerOn : Boolean = false; // is the miner activated?
-  MINER_HashCounter     : Integer = 0; // the longint counter for mining
-  MINER_LastHashCounter : Integer = 0; // used to calculate the mining hash speed
+  MINER_HashCounter     : int64 = 0; // the longint counter for mining
+  MINER_LastHashCounter : int64 = 0; // used to calculate the mining hash speed
   MINER_HashSeed : String = ''; // the prefix for mining
   MINER_BlockFound : boolean = false; // true when the user mines the block
   MINER_ResultHash : String = ''; // result when block is found
-  MINER_FoundedSteps : Integer = 0;  // founded steps of this block
+  MINER_FoundedSteps : int64 = 0;  // founded steps of this block
   MINER_TargetHash : String = ''; // TARGET HASH TO FOUND THE NEW BLOCK
   MINER_MineDiff : String = 'fe';  // string containing the block difficulty
-  MINER_TargetChars : Integer = 6; // Number of consecutive operations to mine the block
-  MINER_Steps : Integer = 1; // number of steps to mine the block
-  MINER_BlockDiffSet : Integer = -1; // block the user is mining
+  MINER_TargetChars : int64 = 6; // Number of consecutive operations to mine the block
+  MINER_Steps : int64 = 1; // number of steps to mine the block
+  MINER_BlockDiffSet : int64 = -1; // block the user is mining
   MINER_CurrStepTarget : String = '';
 
-  LOCAL_MyLastBlock : Integer = 0; // last block the user have in disk
+  LOCAL_MyLastBlock : int64 = 0; // last block the user have in disk
     U_MylastBlock : Boolean = false;
   LOCAL_LastBlockHash : String = ''; // hash of the last user block on disk
     U_MyLastBLockHash : Boolean = false;
-  LOCAL_MyLastAccount : Integer = 0; // last account user have registered on disk
+  LOCAL_MyLastAccount : int64 = 0; // last account user have registered on disk
     U_MyLastAccount : boolean = false;
   LOCAL_MyAccsumHash : String = ''; // Hash of the local account sumary
     U_MyAccsumHash : boolean = false;
 
-  NETWORK_LastBLock  : Integer = 0; // lastblock in the network
+  NETWORK_LastBLock  : int64 = 0; // lastblock in the network
   NETWORK_LastBlockHash : String = ''; // target hash for next block
-  NETWORK_LastAccount : Integer = 0; // acounnts registered on network
+  NETWORK_LastAccount : int64 = 0; // acounnts registered on network
   NETWORK_AccsumHash : String = '';  // Accounts file hash
-  NETWORK_Pending : Integer = 0;
+  NETWORK_Pending : int64 = 0;
     NETWORK_SendPing : boolean = false;
 
   ArrayNodos :  array of nodedata;
   ArrayBlacklisted : array of nodedata;
   ArrayMyAddresses : array of MyWalletData;
   ReadsFromSlots : array [1..CONST_MAXConections] of TStringList;
-  ArrayThreads : Array of Integer;
+  ArrayThreads : Array of int64;
   PendingTXs : TStringList;
   OutGoingMessages: TStringList;
   MainMemoStrings: TStringList;
@@ -331,6 +348,8 @@ Var
         CheckBoxFullNode : TCheckBox;
         LabelUpdateNodes : TLabel;
         CheckBoxUpdateNodes : TCheckBox;
+        LabelShowMinned : Tlabel;
+        CheckBoxMinned :  TCheckBox;
 
     PanelData : TPanel;
       LabelUser : TLabel;
@@ -364,8 +383,10 @@ Var
         LabelSFAmount : TLabel;
         ButtonMaxAmo : TButton;
         EditSFAmount : TEdit;
+        LabelCorAmo : TLabel;
         ButtonSendFunds : TButton;
-        GridPending : TStringGrid;
+      GridPending : TStringGrid;
+      GrisUserTrxs : TStringGrid;
 
     PanelServer : TPanel;
       CheckBoxConnect : TCheckBox;
@@ -384,17 +405,28 @@ Uses
 *******************************************************************************}
 
 // SHOWS THE BALANCE AS CURRENCY
-function Int2CurrencyStr(Value: integer): string;
+function Int2CurrencyStr(Value: int64): string;
 begin
-  result := Format('%.0n', [value * 1.0]);
+  result := Format('%.2n', [value * 0.01]);
 end;
 
-// DETECTS IF A STRING IS A VALID INTEGER
+// DETECTS IF A STRING IS A VALID int64
 function IsValidInt(cadena:string):boolean;
 begin
 Result := True;
    Try
    StrToInt64(cadena);
+   except
+   On E : EConvertError do Result := false;
+   end;
+end;
+
+// DETECTS IF A STRING IS A VALID FLOAT
+function IsValidFloat(cadena:String):Boolean;
+begin
+Result := True;
+   Try
+   StrtoFloat(cadena);
    except
    On E : EConvertError do Result := false;
    end;
@@ -420,7 +452,7 @@ LabelBigBalance.Caption:= Int2CurrencyStr(GetTotalAccountBalance()-GetTotalAccou
 // label listen
 LabelListen.Caption:=    'Listening : '+Booltostr(form1.IdTCPServer1.Active, true)+'('+OptionsData.ListeningPort+')';
 // label connections
-LabelConections.Caption:='Conections: '+IntTostr(GetActiveConex('client'))+'('+')/'+IntTostr(GetActiveConex('server'));
+LabelConections.Caption:='Conections: '+IntTostr(GetActiveConex('client'))+'/'+IntTostr(GetActiveConex('server'));
 // label reachable nodes
 LabelNodes.Caption :=    'ReachNodes: '+IntToStr(GetReachableNodes);
 // label block
@@ -455,7 +487,7 @@ if STATUS_Connected then
 else AccSumMsg := 'Offline';
 LabelAccsumHash.Caption:='AccsumHash: '+AccSumMsg;
 // label last ping
-if STATUS_Connected then LastPingMsg := IntToStr(StrToInt(copy(GetTimeStamp(),1,10))- STATUS_LastPing)+' segs'
+if STATUS_Connected then LastPingMsg := IntToStr(StrToInt64(copy(GetTimeStamp(),1,10))- STATUS_LastPing)+' segs'
 else LastPingMsg :='Offline';
 LabelLastPing.Caption:=  'Last Ping : '+LastPingMsg;
 // LABEL LAST BLOCK DURATION
@@ -502,6 +534,7 @@ End;
 Function verifyfiles():boolean;
 var
   FirsTimeUser : UserData;
+  MiFirstTrx : TranxData;
 Begin
 Result := false;
 // verify if data folder exists
@@ -547,6 +580,7 @@ if not FileExists(CONST_ArchivoUser) then
    FirsTimeUser.AutoConnect:=false;
    FirsTimeUser.FullNode := true;
    FirsTimeUser.GetNodes := false;
+   FirsTimeUser.ShowMinned:=true;
    write(FilaUser,FirsTimeUser);
    OptionsData := FirsTimeUser;
    closefile(FilaUser);
@@ -578,6 +612,7 @@ CheckBoxMin.Checked := OptionsData.MinimToTray;
 CheckBoxAutoConn.Checked := OptionsData.AutoConnect;
 CheckBoxFullNode.Checked := OptionsData.FullNode;
 CheckBoxUpdateNodes.Checked := OptionsData.GetNodes;
+CheckBoxMinned.Checked := OptionsData.ShowMinned;
 // Verify if blocksummary file exists {to be implemented}
 if not FileExists(CONST_ArchivoBlockSum) then
    begin
@@ -590,10 +625,8 @@ if not FileExists(CONST_ArchivoNodos) then
    begin
    assignfile (FilaNodos,CONST_ArchivoNodos);
    rewrite(FilaNodos);
-   // add seed nodes here
    closefile(FilaNodos);
-   AddNewnode('190.39.22.202','8080');
-   AddNewNode('190.79.192.44','8080');
+   // add seed nodes here
    SaveNodesToDisk();
    outputtext('Nodes not found. You will need add then manually.');
    end;
@@ -604,6 +637,17 @@ if not FileExists(CONST_Blacklist) then
    rewrite(FilaBlackList);
    closefile(FilaBlackList);
    outputtext('Blacklisted nodes file created.');
+   end;
+// verify file with my txs
+if not FileExists(CONST_ArchivoMyTxs) then
+   begin
+   MiFirstTrx := default(TranxData);
+   assignfile (FilaMytxs,CONST_ArchivoMyTxs);
+   rewrite(FilaMytxs);
+   MiFirstTrx.block:='0';
+   write(FilaMytxs,MiFirstTrx);
+   closefile(FilaMytxs);
+   outputtext('User transactions file created.');
    end;
 // in not wallet.dat found, then create a new one
 if not FileExists(CONST_ArchivoWallet) then
@@ -621,7 +665,7 @@ End;
 // RETURNS IF A NODE EXISTS OR NOT
 function NodeExists(ip,port:String):boolean;
 Var
-  contador: integer = 0;
+  contador: int64 = 0;
 Begin
 result := false;
 while contador < length(arraynodos) do
@@ -634,7 +678,7 @@ end;
 // RETURNS IF A BLACKLISTED NODE EXISTS OR NOT
 function BLNodeExists(ip,port:String):boolean;
 Var
-  contador: integer = 0;
+  contador: int64 = 0;
 Begin
 result := false;
 while contador < length(ArrayBlacklisted) do
@@ -648,7 +692,7 @@ end;
 Procedure LoadNodesFromDisk();
 Var
   DataLeida : nodedata;
-  contador: integer;
+  contador: int64;
 Begin
 assignfile (FilaNodos,CONST_ArchivoNodos);
 contador := 0;
@@ -669,7 +713,7 @@ End;
 Procedure LoadBLNodesFromDisk();
 Var
   DataLeida : nodedata;
-  contador: integer;
+  contador: int64;
 Begin
 assignfile (FilaBlacklist,CONST_Blacklist);
 contador := 0;
@@ -715,7 +759,7 @@ UpdateBLGridNodes();
 End;
 
 // DELETE AN EXISTING NODE
-Procedure DeleteExistingNode(Number:Integer);
+Procedure DeleteExistingNode(Number:int64);
 Begin
 while Number < length(ArrayNodos) do
    begin
@@ -728,7 +772,7 @@ UpdateGridNodes();
 End;
 
 // DELETE AN EXISTING BLACKLISTED NODE
-Procedure DeleteBlackListedNode(Number:Integer);
+Procedure DeleteBlackListedNode(Number:int64);
 Begin
 while Number < length(ArrayBlackListed) do
    begin
@@ -743,7 +787,7 @@ End;
 // SAVE NODES ARRAY TO DISK
 Procedure SaveNodesToDisk();
 Var
-  contador : integer = 0;
+  contador : int64 = 0;
 Begin
 assignfile (FilaNodos,CONST_ArchivoNodos);
 rewrite (FilaNodos);
@@ -759,7 +803,7 @@ end;
 // SAVE BLACKLISTED NODES ARRAY TO DISK
 Procedure SaveBLNodesToDisk();
 Var
-  contador : integer = 0;
+  contador : int64 = 0;
 Begin
 assignfile (FilaBlacklist,CONST_Blacklist);
 rewrite (FilaBlacklist);
@@ -775,8 +819,8 @@ end;
 // DELETE A NODE FROM ITS ADDRESS
 Procedure DeleteNodeAddress(Address:String);
 var
-  Resultado : Integer = -1;
-  Contador : Integer;
+  Resultado : int64 = -1;
+  Contador : integer;
 Begin
 For contador := 0 to length(ArrayNodos)-1 do
    If ArrayNodos[contador].ip = Address then Resultado := Contador;
@@ -814,10 +858,10 @@ end;
 *******************************************************************************}
 
 // UPDATE THE NETWORK BLOCK DATA: LAST AND HASH
-function UpdateNetworkLastBlockData():Integer;
+function UpdateNetworkLastBlockData():int64;
 var
-  contador : Integer = 1;
-   Higher, slot : Integer;
+  contador : integer = 1;
+   Higher, slot : int64;
 Begin
 Higher := -1;
 for contador := 1 to CONST_MAXConections do
@@ -834,10 +878,10 @@ result := slot;
 End;
 
 // UPDATES THE NETWORKS ACCSUM DATA: LAST AND HASH
-function UpdateNetworkAccountSumData():Integer;
+function UpdateNetworkAccountSumData():int64;
 var
-  contador : Integer = 1;
-  Higher, slot : Integer;
+  contador : integer = 1;
+  Higher, slot : int64;
 Begin
 Higher := -1;
 for contador := 1 to CONST_MAXConections do
@@ -854,10 +898,10 @@ result := slot;
 End;
 
 // UPDATES THE NETWORK PENDING TRXS
-function UpdateNetworkPendingData():Integer;
+function UpdateNetworkPendingData():int64;
 var
-  contador : Integer = 1;
-  Higher, slot : Integer;
+  contador : integer = 1;
+  Higher, slot : int64;
 Begin
 Higher := -1;
 for contador := 1 to CONST_MAXConections do
@@ -877,9 +921,9 @@ End;
 *******************************************************************************}
 
 // IF the USER OWNS A SPECIFIED ADDRESS RETURNS INDEX OF ArrayMyAddresses, ELSE RETURNS -1
-function IsAddressMine(address:string):integer;
+function IsAddressMine(address:string):int64;
 var
-  Contador : Integer = 0;
+  Contador : integer = 0;
 Begin
 result := -1;
 for contador := 0 to length(ArrayMyAddresses) - 1 do
@@ -897,7 +941,7 @@ Procedure LoadWalletData();
 var
   ReadData: WalletData;
   WriteData : MyWalletData;
-  contador: integer = 0;
+  contador: int64 = 0;
 Begin
 assignfile (FilaWallet,CONST_ArchivoWallet);
 reset(FilaWallet);
@@ -928,7 +972,7 @@ Procedure SaveAddressesToDisk();
 var
   ReadData: MyWalletData;
   WriteData : WalletData;
-  contador: integer = 0;
+  contador: int64 = 0;
 Begin
 assignfile (FilaWallet,CONST_ArchivoWallet);
 rewrite(FilaWallet);
@@ -948,7 +992,7 @@ End;
 // CALCULATES THE TOTAL ACCOUNT BALANCE
 function GetTotalAccountBalance():Int64;
 var
-  Contador : Integer = 0;
+  Contador : integer = 0;
   Total : int64 = 0;
 Begin
 for contador := 0 to length(ArrayMyAddresses) - 1 do
@@ -961,7 +1005,7 @@ end;
 // RETURNS THE TOTAL PENDING PAYMENTS FROM THE ACCOUNT
 function GetTotalAccountPendingPayments():Int64;
 var
-  Contador : Integer = 0;
+  Contador : integer = 0;
   Total : int64 = 0;
   ThisAddress  : int64 = 0;
 begin
@@ -990,7 +1034,7 @@ End;
 function GetAccountNumberFromAddress(address:string):string;
 var
   DataRead : AccountData;
-  contador : integer = 0;
+  contador : int64 = 0;
 Begin
 Result := '-1';
 assignfile (FilaAccData,CONST_ArchivoAccData);
@@ -1011,7 +1055,7 @@ Closefile(FilaAccData);
 End;
 
 // RETURNS THE ADDRESS  OF A SPECIFIED ACCOUNT NUMBER
-function GetAddressFromAccountNumber(Accnumber:integer):String;
+function GetAddressFromAccountNumber(Accnumber:int64):String;
 var
   DataRead : AccountData;
 Begin
@@ -1034,7 +1078,7 @@ End;
 function GetAddressBalanceFromDisk(Account:String):Int64;
 var
   DataRead : AccountData;
-  contador : integer = 0;
+  contador : int64 = 0;
 Begin
 Result := -1;
 assignfile (FilaAccData,CONST_ArchivoAccData);
@@ -1058,7 +1102,7 @@ end;
 function GetAddressPubKey(Address:String):String;
 var
   DataRead : AccountData;
-  contador : integer = 0;
+  contador : int64 = 0;
 Begin
 Result :='FAIL';
 assignfile (FilaAccData,CONST_ArchivoAccData);
@@ -1082,7 +1126,7 @@ End;
 procedure CheckIfMyAddressesNeedsRegisterFromDisk();
 var
   DataRead : AccountData;
-  Contador : Integer = 0;
+  Contador : int64 = 0;
 Begin
 assignfile (FilaAccData,CONST_ArchivoAccData);
 Reset(FilaAccData);
@@ -1114,7 +1158,7 @@ End;
 procedure AddAddressIfNotExists(address:string);
 var
   DataRead : AccountData;
-  contador : integer = 0;
+  contador : int64 = 0;
   NewAccount : AccountData;
 Begin
 assignfile (FilaAccData,CONST_ArchivoAccData);
@@ -1152,7 +1196,7 @@ End;
 // VERIFY IF ANY USER ADDRESS HAVE REGISTER STATUS = 1 AND SEND ACRE
 Procedure VerifyUserAddressesForAcre();
 var
-  counter:Integer;
+  counter:integer;
 Begin
 for counter := 0 to length(ArrayMyAddresses)-1 do
    begin
@@ -1169,7 +1213,7 @@ for counter := 0 to length(ArrayMyAddresses)-1 do
 End;
 
 // RETURNS THE NUMBER OF ACCOUNTS IN THE ACCOUNT SUMMARY
-function GetLastAccountUpdated():Integer;
+function GetLastAccountUpdated():int64;
 Begin
 assignfile (FilaAccData,CONST_ArchivoAccData);
 reset(FilaAccData);
@@ -1192,11 +1236,11 @@ End;
 *******************************************************************************}
 
 // RETURNS THE LAST DOWNLOADED BLOCK
-function GetMyLastUpdatedBlock():Integer;
+function GetMyLastUpdatedBlock():int64;
 Var
   BlockFiles : TStringList;
-  contador : Integer = 0;
-  LastBlock : Integer = 0;
+  contador : int64 = 0;
+  LastBlock : int64 = 0;
   OnlyNumbers : String;
 Begin
 BlockFiles := TStringList.Create;
@@ -1222,16 +1266,16 @@ U_MyLastBLockHash := false;
 end;
 
 // RETURNS THE LAST BLOCK BUILD FROM SUMMARY
-function BlockSumLastBlock():Integer;
+function BlockSumLastBlock():int64;
 Begin
 if length(ArrBlockSummary) > 0 then Result := StrToInt(ArrBlockSummary[length(ArrBlockSummary)-1].Number)
 else result := 0;
 end;
 
 // RETURNS THE BLOCK DATA FROM BLOCKSUM
-function GetBlockData(blnumber:Integer):BlockSumData;
+function GetBlockData(blnumber:int64):BlockSumData;
 var
-  contador : Integer = 0;
+  contador : integer = 0;
 Begin
 for contador := 0 to length(ArrBlockSummary)-1 do
    begin
@@ -1243,8 +1287,8 @@ for contador := 0 to length(ArrBlockSummary)-1 do
    end;
 end;
 
-// RETURNS THE BLOCK DATA FROM DISK FOR SUMMARY
-function GetBlockDataFromDisk(BlockNumber:Integer):BlockSumData;
+// RETURNS THE BLOCK DATA FROM DISK FOR SUMMARY (Headers)
+function GetBlockDataFromDisk(BlockNumber:int64):BlockSumData;
 var
   Resultado : BlockSumData;
   MemStr: TMemoryStream;
@@ -1271,14 +1315,15 @@ Resultado.Difficult   := Header.Difficult;
 Resultado.NxtBlkDiff  := Header.NxtBlkDiff;
 Resultado.BlockHash   := HashMD5File(ArchData);
 Resultado.AccountMiner:= Header.AccountMiner;
+Resultado.MinerFee    := IntToStr(Header.MinerFee);
 Result := resultado;
 End;
 
 // BUILD THE BLOCK SUMMARY
 Procedure BuildBlockSum();
 var
-  FirstBlock, Arrlen : Integer;
-  Contador : Integer;
+  FirstBlock, Arrlen : int64;
+  Contador : integer;
 Begin
 if LOCAL_MyLastBlock > -1 then
    begin
@@ -1297,7 +1342,7 @@ End;
 // ADJUST BLOCKSUM TO MAXIMUN SIZE
 Procedure AdjustBlockSum();
 var
-  Number : integer = 0;
+  Number : int64 = 0;
 Begin
 if length(ArrBlockSummary) > CONST_BlockSummaryLength then
    begin
@@ -1310,29 +1355,134 @@ if length(ArrBlockSummary) > CONST_BlockSummaryLength then
    end;
 End;
 
+// returns the last block from where user trxs was extracted
+function GetMyLastUpdatedBlockTrxs():integer;
+var
+  FirstTrx : TranxData;
+Begin
+assignfile (FilaMytxs,CONST_ArchivoMyTxs);
+reset(FilaMytxs);
+seek(FilaMytxs,0);
+read(FilaMytxs,FirstTrx);
+Closefile(FilaMytxs);
+Result := StrToInt(FirstTrx.block);
+end;
+
+// SET THE LAST CHECKED BLOCK FOR USER TRXS
+Procedure SetMyLastUpdatedBlockTrxs(Number:integer);
+var
+  FirstTrx : TranxData;
+Begin
+FirstTrx := Default(TranxData);
+FirstTrx.block:=IntToStr(Number);
+assignfile (FilaMytxs,CONST_ArchivoMyTxs);
+reset(FilaMytxs);
+seek(FilaMytxs,0);
+write(FilaMytxs,FirstTrx);
+Closefile(FilaMytxs);
+End;
+
+// returns an array with all the trxs from a specified block
+function GetBlockTrxsFromDisk(BlockNumber:integer):BlockArrTrxsData;
+var
+  ArrTrxs : BlockArrTrxsData;
+  MemStr: TMemoryStream;
+  Header : BlockHeaderData;
+  ArchData : String;
+  counter : integer;
+  TotalTrxs : integer;
+Begin
+Setlength(ArrTrxs,0);
+ArchData := CONST_DIRBLOCKS+IntToStr(BlockNumber)+'.blk';
+MemStr := TMemoryStream.Create;
+   try
+   MemStr.LoadFromFile(ArchData);
+   MemStr.Position := 0;
+   MemStr.Read(Header, SizeOf(Header));
+   TotalTrxs := header.TrxTot;
+   SetLength(ArrTrxs,TotalTrxs);
+   For Counter := 0 to TotalTrxs-1 do
+      MemStr.Read(ArrTrxs[Counter],Sizeof(ArrTrxs[Counter])); // read each record
+   Except on E: Exception do // nothing, the block is not founded
+   end;
+MemStr.Free;
+Result := ArrTrxs;
+End;
+
+// SAVE TRANSACTION TO MY TRXS
+procedure SaveToMyTrxs(transaction : TranxData);
+Begin
+assignfile (FilaMytxs,CONST_ArchivoMyTxs);
+reset(FilaMytxs);
+seek(FilaMytxs,filesize(FilaMytxs));
+write(FilaMytxs,transaction);
+Closefile(FilaMytxs);
+end;
+
+// BUILT USER TRXS
+Procedure BuiltMyTrxs();
+var
+  LastUpdatedBlock : integer;
+  counter,counter2 : integer;
+  BlockArrTrxs : array of TranxData;
+  SaveMsj : String;
+  SavedTrxs : integer = 0;
+  Header : BlockSumData;
+  TrxMinned: TranxData;
+Begin
+SaveMsj := PanelStatus.Caption;
+LastUpdatedBlock := GetMyLastUpdatedBlockTrxs();
+for counter := LastUpdatedBlock+1 to LOCAL_MyLastBlock do
+   begin
+      try
+      BlockArrTrxs := Copy(GetBlockTrxsFromDisk(counter));
+      for counter2 := 0 to length(BlockArrTrxs)-1 do
+         begin
+         if BlockArrTrxs[counter2].TypeTx = 'TRFR' then
+            begin
+            if ((IsAddressMine(BlockArrTrxs[counter2].Sender)>-1) or (IsAddressmine(BlockArrTrxs[counter2].Receiver)>-1)) then
+               begin
+               SaveToMyTrxs(BlockArrTrxs[counter2]);
+               SavedTrxs := SavedTrxs+1;
+               end;
+            end;
+         end;
+      PanelStatus.Caption:= IntToStr(counter);
+      application.ProcessMessages;
+      finally
+      end;
+   Header := GetBlockDataFromDisk(counter);
+   if IsAddressMine(header.AccountMiner)>-1 then
+      begin
+      TrxMinned := default(Tranxdata);
+      TrxMinned.block := header.Number;
+      TrxMinned.TypeTx:= 'MINE';
+      TrxMinned.TimeStamp:= header.TimeEnd;
+      TrxMinned.Sender:= header.NxtBlkDiff;
+      TrxMinned.Receiver:= header.AccountMiner;
+      TrxMinned.Ammount:= IntToStr(StrToInt64(header.MinerFee)+GetBlockReward(StrToInt64(header.Number)));
+      TrxMinned.Signature:= '';
+      TrxMinned.Hash:= '';
+      SaveToMyTrxs(TrxMinned);
+      SavedTrxs := SavedTrxs+1;
+      end;
+   end;
+if LOCAL_MyLastBlock > LastUpdatedBlock+1 then
+  OutputText('Blocks Rebuilded: '+IntToStr(LastUpdatedBlock+1)+' to '+IntToStr(LOCAL_MyLastBlock));
+PanelStatus.Caption := SaveMsj;
+SetMyLastUpdatedBlockTrxs(LOCAL_MyLastBlock);// set last block checked
+U_RebuildMyTxs := false;
+if SavedTrxs > 0 then UpdateUserTrxs();
+End;
+
 {*******************************************************************************
                                    CONNECTIONS
 *******************************************************************************}
 
-// RETURNS THE NUMBER OF CONTEXTS OF SERVER
-function ClientsCount : Integer ;
-var
-  Clients : TList;
-begin
-Clients := TList.Create;
-Clients:=form1.IdTCPServer1.Contexts.LockList;
-   try
-   Result := Clients.Count ;
-   finally
-   form1.IdTCPServer1.Contexts.UnlockList;
-   Clients.Free;
-   end;
-end ;
-
 // RETURN THE NUMBER OF ACTIVE CONNECTIONS (CLIENT OR SERVER)
-function GetActiveConex(tipo:string):Integer;
+function GetActiveConex(tipo:string):int64;
 var
-  contador : Integer = 1;
+  contador : integer = 1;
 Begin
 result := 0;
 for contador := 1 to CONST_MAXConections do
@@ -1342,9 +1492,9 @@ for contador := 1 to CONST_MAXConections do
 End;
 
 // RETURN THE NUMBER OF TOTAL ACTIVE CONEX
-function GetTotalConex():Integer;
+function GetTotalConex():int64;
 var
-  contador : Integer = 1;
+  contador : integer = 1;
 Begin
 result := 0;
 for contador := 1 to CONST_MAXConections do
@@ -1354,10 +1504,10 @@ for contador := 1 to CONST_MAXConections do
 End;
 
 // SAVE CONECTION TO SLOT
-function SaveConection(tipo,ipuser,timestamp:String;contextdata:TIdContext;clientnumber:string):integer;
+function SaveConection(tipo,ipuser,timestamp:String;contextdata:TIdContext;clientnumber:string):int64;
 var
   contador : integer = 1;
-  Slot : integer = 0;
+  Slot : int64 = 0;
 begin
 For contador := 1 to CONST_MAXConections do
    begin
@@ -1385,7 +1535,7 @@ end;
 // CLEAR A CONECTION SLOT
 function ClearConection(tipo,ipuser:string):boolean;
 var
-  contador : integer = 1;
+  contador : int64 = 1;
 begin
 result := false;
 while contador < CONST_MAXConections+1 do
@@ -1412,9 +1562,9 @@ while contador < CONST_MAXConections+1 do
 end;
 
 // RETURNS A FREE CONECTION SLOT OR 0 IF NONE
-function GetFreeConexSlot():Integer;
+function GetFreeConexSlot():int64;
 var
-  contador : Integer = 1;
+  contador : integer = 1;
 begin
 for contador := 1 to CONST_MAXConections do
    begin
@@ -1428,9 +1578,9 @@ result := 0;
 end;
 
 // RETURNS THE REACHABLE NODES
-function GetReachableNodes():Integer;
+function GetReachableNodes():int64;
 var
-  contador : Integer = 1;
+  contador : integer = 1;
 begin
 result := 0;
 for contador := 1 to CONST_MAXConections do
@@ -1443,7 +1593,7 @@ for contador := 1 to CONST_MAXConections do
 end;
 
 // RETURNS A FREE CLIENT OR 0 IF NONE
-function GetFreeCliente():Integer;
+function GetFreeCliente():int64;
 var
   contador : integer = 1;
 begin
@@ -1459,9 +1609,9 @@ Result := 0;
 end;
 
 // CONNECT AS CLIENT
-function ConnectClient(Address,Port:String):integer;
+function ConnectClient(Address,Port:String):int64;
 var
-  freeconex, freecliente : integer;
+  freeconex, freecliente : int64;
   ConContext : TIdContext; // EMPTY
 Begin
 ConContext := Default(TIdContext);
@@ -1511,7 +1661,7 @@ End;
 // RETURNS IF WE ARE CONNECTED TO A GIVEN IP
 Function AreWeConnectedTo(address:String):Boolean;
 var
-  contador : Integer = 1;
+  contador : integer = 1;
 Begin
 for contador := 1 to CONST_MAXConections do
    begin
@@ -1525,7 +1675,7 @@ Result := false;
 End;
 
 // RETURNS THE SLOT OF THE GIVEN IP
-function GetSlotFromIP(Ip:String):Integer;
+function GetSlotFromIP(Ip:String):int64;
 var
   contador : integer;
 Begin
@@ -1543,7 +1693,7 @@ end;
 // CONNECT TO SERVERS
 Procedure ConnectToServers();
 var
-  contador : integer = 0;
+  contador : int64 = 0;
 begin
 while contador < length(ArrayNodos) do
    begin
@@ -1557,7 +1707,7 @@ CONNECT_LastTime := StrToInt64(GetTimeStamp());
 end;
 
 // CONNECT TO A SPECIFIED NODE
-Procedure TryConnectToNode(NodeNumber:Integer);
+Procedure TryConnectToNode(NodeNumber:int64);
 Begin
 if ((not AreWeConnectedTo(Arraynodos[NodeNumber].ip)) AND
    (GetActiveConex('server')<CONST_MaxOutgoingConections) AND
@@ -1572,7 +1722,7 @@ End;
 // CLOSE ALL OUTGOING (tipo:server) CONECTIONS
 Procedure CloseConectionsToServers();
 var
-  Contador: Integer;
+  Contador: integer;
 Begin
 for contador := 1 to CONST_MAXConections do
    begin
@@ -1602,7 +1752,7 @@ end;
 // DISABLE SERVER (DISCONNECT ALL INCOMING FIRST)
 procedure TurnListenOff();
 var
-  Contador: Integer;
+  Contador: integer;
 Begin
 for contador := 1 to CONST_MAXConections do
    begin
@@ -1613,7 +1763,7 @@ OutputText('Incoming connections disabled');
 end;
 
 // CLOSE A GIVEN CONNECTION SLOT AND SENDS A MESSAGE
-procedure CloseConnectionSlot(Slot:Integer);
+procedure CloseConnectionSlot(Slot:int64);
 begin
 if conexiones[Slot].tipo='client' then
    begin
@@ -1674,7 +1824,7 @@ end;
 // UPDATES THE GRID CONTAINING THE NODES
 Procedure UpdateGridNodes();
 var
-  contador : integer = 0;
+  contador : int64 = 0;
 Begin
 GridNodes.ColCount:=2;
 GridNodes.RowCount:=length(arraynodos)+1;
@@ -1693,7 +1843,7 @@ End;
 // UPDATES THE GRID CONTAINING THE BLACKLISTED NODES // FIX
 procedure UpdateBLGridNodes();
 var
-  contador : integer = 0;
+  contador : int64 = 0;
 Begin
 GridBLNodes.ColCount:=1;
 GridBLNodes.RowCount:=length(ArrayBlacklisted)+1;
@@ -1712,10 +1862,10 @@ End;
 procedure UpdateGridConxs();
 var
   contador : integer;
-  ShowClientTipe, ShowLB, ShowLBHash : String;
+  ShowClientTipe, ShowLB, ShowLBHash, ShowAccSumHash : String;
 Begin
 GridConxs.ColWidths[0]:= 20;GridConxs.ColWidths[1]:= 100;GridConxs.ColWidths[2]:= 60;
-GridConxs.ColWidths[3]:= 60;GridConxs.ColWidths[4]:= 60;
+GridConxs.ColWidths[3]:= 60;GridConxs.ColWidths[4]:= 60;GridConxs.ColWidths[5]:= 80;
 for contador := 1 to CONST_MAXConections do
    begin
    if Conexiones[contador].tipo = '' then
@@ -1723,6 +1873,7 @@ for contador := 1 to CONST_MAXConections do
       ShowClientTipe := 'EMPTY';
       ShowLB := '';
       ShowLBHash := '';
+      ShowAccSumHash := '';
       end
    else
       begin
@@ -1731,19 +1882,22 @@ for contador := 1 to CONST_MAXConections do
       else ShowLB := '✘';
       if Conexiones[contador].LastblockHash = LOCAL_LastBlockHash then ShowLBHash := '✔'
       else ShowLBHash := '✘';
+      if Conexiones[contador].AccountsHash = LOCAL_MyAccsumHash then ShowAccSumHash := '✔'
+      else ShowAccSumHash := '✘'
       end;
    GridConxs.Cells[0,contador]:=IntToStr(contador);
    GridConxs.Cells[1,contador]:=Conexiones[contador].ip;
    GridConxs.Cells[2,contador]:=ShowClientTipe;
    GridConxs.Cells[3,contador]:=ShowLB;
    GridConxs.Cells[4,contador]:=ShowLBHash;
+   GridConxs.Cells[5,contador]:=ShowAccSumHash;
    end;
 End;
 
 // UPDATES THE GRID CONTAINING THE WALLET ADDRESSES
 Procedure UpdateMyAddresses();
 var
-  contador : integer = 0;
+  contador : int64 = 0;
   BalanceToShow : String;
   RegisterStatus : String = '';
 Begin
@@ -1790,10 +1944,10 @@ else
    end;
 End;
 
-// UPDATES THE USER WALLET PENDING TXS
+// UPDATES GRID CONTAINING THE USER WALLET PENDING TXS
 Procedure UpdateMyPendingTxs();
 var
-  contador : Integer;
+  contador : integer;
   Tipo, Sender, Receiver, Monto : String;
   Ammount : Int64;
 begin
@@ -1829,6 +1983,7 @@ end;
 // SHOWS THE MENSAJE PANEL
 Procedure ShowMensaje(Exito:Boolean);
 Begin
+if not MAIN_ProgramStarted then exit;
 if Exito then
    begin
    PanelMensaje.Color:=clgreen;PanelMensaje.Caption:='Success';PanelMensaje.Visible:=true;
@@ -1840,6 +1995,48 @@ else
    PanelMensaje.BringToFront;
    end;
 Form1.TimerMensaje.Enabled:=true;
+End;
+
+// SHOW USER TRXS
+Procedure UpdateUserTrxs();
+var
+  contador : integer;
+  Registros : integer;
+  Transaccion : tranxdata;
+  Ammount : Int64;
+Begin
+GrisUserTrxs.RowCount:=1;GrisUserTrxs.ColCount:=2;
+assignfile (FilaMytxs,CONST_ArchivoMyTxs);
+reset(FilaMytxs);
+registros := filesize(FilaMytxs);
+for contador := registros-1 downto 0 do
+   begin
+   seek(FilaMytxs,contador);
+   read(FilaMytxs,Transaccion);
+   if transaccion.TypeTx = 'TRFR' then
+      begin
+      if IsAddressMine(transaccion.sender) >= 0 then transaccion.Ammount := '-'+transaccion.Ammount;
+      if IsAddressMine(transaccion.Receiver) >= 0 then transaccion.Ammount := '+'+transaccion.Ammount;
+      if ((IsAddressMine(transaccion.sender)>-1) or (IsAddressMine(transaccion.Receiver)>-1)) then
+         begin
+         GrisUserTrxs.RowCount:=GrisUserTrxs.RowCount+1;
+         GrisUserTrxs.ColWidths[0]:= 50;GrisUserTrxs.ColWidths[1]:= 160;
+         Ammount := StrToInt64(transaccion.Ammount);
+         if Ammount < 0 then Ammount := Ammount - GetComisionValue(abs(ammount));
+         GrisUserTrxs.Cells[0,GrisUserTrxs.RowCount-1] := transaccion.block;
+         GrisUserTrxs.Cells[1,GrisUserTrxs.RowCount-1] := Int2CurrencyStr(Ammount);
+         end;
+      end;
+   if ((transaccion.TypeTx = 'MINE') and (OptionsData.ShowMinned)) then
+      begin
+      GrisUserTrxs.RowCount:=GrisUserTrxs.RowCount+1;
+      GrisUserTrxs.ColWidths[0]:= 50;GrisUserTrxs.ColWidths[1]:= 160;
+      Ammount := StrToInt64(transaccion.Ammount);
+      GrisUserTrxs.Cells[0,GrisUserTrxs.RowCount-1] := transaccion.block;
+      GrisUserTrxs.Cells[1,GrisUserTrxs.RowCount-1] := Int2CurrencyStr(Ammount);
+      end;
+   end;
+closefile(FilaMytxs);
 End;
 
 END. // END UNIT

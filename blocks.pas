@@ -8,18 +8,18 @@ uses
   Classes, SysUtils,Forms, MAster, TimeUnit, CM_Crypto, commandlineparser,Dialogs,
   fileutil;
 
-function BuildNewBlock(blNumber:integer;TimeStamp,Account,Solution,NewBlHash, TargetHash,difficulty:String): boolean;
+function BuildNewBlock(blNumber:int64;TimeStamp,Account,Solution,NewBlHash, TargetHash,difficulty:String): boolean;
 procedure SaveNewBlockToDisk(BlockHeader:BlockHeaderData;ArrBlockTxs: Array of TranxData;Solution, filename:string);
-function GetDiffForNextBlock(block,ThisBlockTime:Integer):String;
-function DecreaseDiff(minediff:String;variation:integer):String;
-function IncreaseDiff(minediff:String;variation:integer):String;
-Function GetLast20Average(ThisBlockTime:integer):Integer;
-function GetBlockReward(BlNumber:Integer):Int64;
-procedure AddFundsToAddress(Address:String;Amount:Int64;block:Integer);
-procedure SetAddressPubKey(Address,PubKey:String;block:Integer);
-function GetNegativeValue(number:Integer):Integer;
+function GetDiffForNextBlock(block,ThisBlockTime:int64):String;
+function DecreaseDiff(minediff:String;variation:int64):String;
+function IncreaseDiff(minediff:String;variation:int64):String;
+Function GetLast20Average(ThisBlockTime:int64):int64;
+function GetBlockReward(BlNumber:int64):Int64;
+procedure AddFundsToAddress(Address:String;Amount:Int64;block:int64);
+procedure SetAddressPubKey(Address,PubKey:String;block:int64);
+function GetNegativeValue(number:int64):int64;
 procedure CreateBlockZero();
-function UndoneLastBlock(BlNumber:Integer = -1):Boolean;
+function UndoneLastBlock(BlNumber:int64 = -1):Boolean;
 procedure LBData();
 
 implementation
@@ -28,16 +28,16 @@ Uses
   MC_Main, Protocol;
 
 // BUILDS A NEW BLOCK GetTimeStamp
-function BuildNewBlock(blNumber:integer;TimeStamp,Account,Solution,NewBlHash,TargetHash,difficulty:String): boolean;
+function BuildNewBlock(blNumber:int64;TimeStamp,Account,Solution,NewBlHash,TargetHash,difficulty:String): boolean;
 var
   TrxData : TranxData;
   PendingType : string;
   textLine : String;
   StartBlockTime, ThisBlockHash : String;
-  PendingCounter : Integer;
-  TotalOps : Integer = 0;
-  MinerFee : Integer = 0;
-  ThisTrxFee : Integer = 0;
+  PendingCounter : integer;
+  TotalOps : int64 = 0;
+  MinerFee : int64 = 0;
+  ThisTrxFee : int64 = 0;
   TLAddress, TLAmount: String;
   TransfersList : TStringlist;
   AcresList : TStringlist;
@@ -102,11 +102,11 @@ if PendingTXs.Count > 0 then
          TrxData.Ammount:= GetParameterFromCommandLine(TextLine,4);
          TrxData.Signature:= GetParameterFromCommandLine(TextLine,5);
          TrxData.hash:=GetParameterFromCommandLine(TextLine,6);
-           ThisTrxFee := GetComisionValue(StrToInt(TrxData.Ammount));
-           TrxData.Ammount := IntToStr(StrToInt(TrxData.Ammount)-ThisTrxFee);
+           ThisTrxFee := GetComisionValue(StrToInt64(TrxData.Ammount));
+           TrxData.Ammount := IntToStr(StrToInt64(TrxData.Ammount)-ThisTrxFee);
          MinerFee := MinerFee + ThisTrxFee;
          TransfersList.Add('TRFR '+TrxData.Receiver+' '+TrxData.Ammount);
-         TransfersList.Add('TRFR '+TrxData.Sender+' '+IntToStr(GetNegativeValue(StrToInt(TrxData.Ammount)+ThisTrxFee)));
+         TransfersList.Add('TRFR '+TrxData.Sender+' '+IntToStr(GetNegativeValue(StrToInt64(TrxData.Ammount)+ThisTrxFee)));
          SetLength(ArrBlockTxs,Length(ArrBlockTxs)+1);
          ArrBlockTxs[Length(ArrBlockTxs)-1] := TrxData;
          end;
@@ -131,17 +131,30 @@ BlockHeader.SolutionLength:=length(Solution);
 
 SaveNewBlockToDisk(BlockHeader,ArrBlockTxs,Solution, filename);
 
-outputtext(IntToStr(AcresList.Count)+' Registers - '+IntToStr(TransfersList.Count div 2)+' Trxs - '+IntToStr(IgnoredTrxs.Count)+' Ignored');
 ThisBlockHash := HashMD5File(CONST_DirBlocks+IntToStr(BlNumber)+'.blk');
 if NewBlHash = '' then
    begin
    OutputText('You found block:'+IntToStr(BlNumber)+' - Hash:'+ThisBlockHash);
+   if MAIN_MinOnTray then
+      begin
+      Form1.SystrayIcon.BalloonHint:='You found block: '+IntToStr(BlNumber);
+      form1.SystrayIcon.BalloonTitle:='Kreditz Miner';
+      form1.SystrayIcon.ShowBalloonHint;
+      end;
    end
 else if ((NewBlHash <> '') and (NewBlHash = ThisBlockHash)) then OutputText('Good Block Hash')
-else if ((NewBlHash <> '') and (NewBlHash <> ThisBlockHash)) then OutputText('Wrong Block Hash');
+else if ((NewBlHash <> '') and (NewBlHash <> ThisBlockHash)) then
+   begin
+   // the block hash is wrong so discard it
+   OutputText('Wrong Block: '+IntToStr(BlNumber));
+   DeleteFile(filename);
+   exit;
+   end;
 
+outputtext(IntToStr(AcresList.Count)+' Registers - '+IntToStr(TransfersList.Count div 2)+' Trxs - '+IntToStr(IgnoredTrxs.Count)+' Ignored');
 // SAVE VALUES TO REBUILD THE BLOCK IF NECESSARY
 CopyFile(CONST_ArchivoAccData,CONST_ArchivoAccData+'.bak',true);
+CopyFile(CONST_ArchivoMyTxs,CONST_ArchivoMyTxs+'.bak',true);
 LASTBLOCK_ArrBlockSum := copy(ArrBlockSummary);
 LASTBLOCK_ArrMyAddresses := copy(ArrayMyAddresses);
 LASTBLOCK_PendingTxs.AddStrings(PendingTxs);
@@ -163,11 +176,11 @@ While TransfersList.Count > 0 do
    TLAddress := GetParameterFromCommandLine(TransfersList[0],1);
    TLAmount := GetParameterFromCommandLine(TransfersList[0],2);
    AddAddressIfNotExists(TLAddress);
-   AddFundsToAddress(TLAddress,StrToInt(TLAmount),BlNumber);
+   AddFundsToAddress(TLAddress,StrToInt64(TLAmount),BlNumber);
      if IsAddressMine(TLAddress) > -1 then
        ArrayMyAddresses[IsAddressMine(TLAddress)].Balance:=
-       IntToStr(StrToInt(ArrayMyAddresses[IsAddressMine(TLAddress)].Balance)+
-       StrToInt(TLAmount));
+       IntToStr(StrToInt64(ArrayMyAddresses[IsAddressMine(TLAddress)].Balance)+
+       StrToInt64(TLAmount));
    if  TransfersList.Count > 0 then TransfersList.Delete(0);
    end;
 // MINER PAYMENT {modify accsum & ArrayMyAddresses}
@@ -175,13 +188,14 @@ AddAddressIfNotExists(Account);
 AddFundsToAddress(Account,GetBlockReward(BlNumber)+MinerFee,blNumber);
 if IsAddressMine(Account) > -1 then
    ArrayMyAddresses[IsAddressMine(Account)].Balance:=
-   IntToStr(StrToInt(ArrayMyAddresses[IsAddressMine(Account)].Balance)+GetBlockReward(BlNumber)+MinerFee);
+   IntToStr(StrToInt64(ArrayMyAddresses[IsAddressMine(Account)].Balance)+GetBlockReward(BlNumber)+MinerFee);
 // SET UPDATES
 U_MylastBlock := true;
 U_MyLastBLockHash := true;
 U_MyLastAccount := true;
 U_MyAccsumHash := true;
 U_MyBalance := true;
+U_RebuildMyTxs := true;
 PendingTXs.Clear;
 While IgnoredTrxs.Count> 0 do
    begin
@@ -216,7 +230,7 @@ End;
 Procedure SaveNewBlockToDisk(BlockHeader:BlockHeaderData;ArrBlockTxs: Array of TranxData;Solution, filename:string);
 var
   MemStr: TMemoryStream;
-  ArrRecords, SolLen : Integer;
+  ArrRecords, SolLen : int64;
   counter : integer;
 Begin
 ArrRecords := BlockHeader.TrxTot;
@@ -234,9 +248,9 @@ MemStr := TMemoryStream.Create;
 End;
 
 // RETURNS THE DIFFICULT FOR NEXT BLOCK
-function GetDiffForNextBlock(block,ThisBlockTime:Integer):String;
+function GetDiffForNextBlock(block,ThisBlockTime:int64):String;
 var
-  Last20Ave : Integer;
+  Last20Ave : int64;
   LastDiff : String;
 Begin
 if block < 20 then Result := 'fe'
@@ -282,9 +296,9 @@ else
 End;
 
 // DECREASES THE MINER DIFF
-function DecreaseDiff(minediff:String;variation:integer):String;
+function DecreaseDiff(minediff:String;variation:int64):String;
 var
-  Lettra, Numero : integer;
+  Lettra, Numero : int64;
   Resultado : String = '';
 Begin
 Lettra := GetCharsFromMinerDiff(minediff);
@@ -301,9 +315,9 @@ Result := Resultado;
 End;
 
 // INCREASES THE MINER DIFF
-function IncreaseDiff(minediff:String;variation:integer):String;
+function IncreaseDiff(minediff:String;variation:int64):String;
 var
-  Lettra, Numero : integer;
+  Lettra, Numero : int64;
   Resultado : String = '';
 Begin
 Lettra := GetCharsFromMinerDiff(minediff);
@@ -320,33 +334,39 @@ Result := Resultado;
 End;
 
 // RETURNS THE AVE DURATION OF THE LAST 20 BLOCKS
-Function GetLast20Average(ThisBlockTime:integer):Integer;
+Function GetLast20Average(ThisBlockTime:int64):int64;
 var
-  contador : Integer;
-  Duration : Integer = 0;
-  Divisor : Integer;
+  contador : integer;
+  Duration : int64 = 0;
+  Divisor : int64;
 Begin
 if ThisBlockTime > 0 then Divisor := length(ArrBlockSummary) + 1
 else Divisor := length(ArrBlockSummary);
 for contador := 0 to length(ArrBlockSummary)-1 do
    begin
-   Duration := Duration+StrToInt(ArrBlockSummary[contador].TimeTot);
+   Duration := Duration+StrToInt64(ArrBlockSummary[contador].TimeTot);
    end;
 Result := (Duration+ThisBlockTime) div (divisor);
 end;
 
 // RETURNS THE MINING REWARD FOR A BLOCK
-function GetBlockReward(BlNumber:Integer):Int64;
+function GetBlockReward(BlNumber:int64):Int64;
 Begin
-if BlNumber = 0 then result := 0
-else if ((BlNumber > 0) and (blnumber <= 2880)) then result := 1000000
-else if ((BlNumber > 2881) and (BlNumber <= 8640)) then result := 900000
-else if ((BlNumber > 8641) and (BlNumber <= 20160)) then result := 800000
-else result := 700000;
+if BlNumber = 0 then result := 142054400000
+else if ((BlNumber > 0) and (blnumber <= 2016)) then result := 102400000
+else if ((BlNumber > 2017) and (BlNumber <= 6048)) then result := 51200000
+else if ((BlNumber > 6049) and (BlNumber <= 14112)) then result := 25600000
+else if ((BlNumber > 14113) and (BlNumber <= 30240)) then result := 12800000
+else if ((BlNumber > 30241) and (BlNumber <= 62496)) then result := 6400000
+else if ((BlNumber > 62497) and (BlNumber <= 127008)) then result := 3200000
+else if ((BlNumber > 127009) and (BlNumber <= 256032)) then result := 1600000
+else if ((BlNumber > 256033) and (BlNumber <= 514080)) then result := 800000
+else if ((BlNumber > 514081) and (BlNumber <= 1030176)) then result := 400000
+else result := 0;
 End;
 
 // ADD FUNDS TO A SPECIFIED ADDRESS
-Procedure AddFundsToAddress(Address:String;Amount:Int64;block:Integer);
+Procedure AddFundsToAddress(Address:String;Amount:Int64;block:int64);
 var
   contador : integer = 0;
   Dataread, DataWrite : AccountData;
@@ -363,7 +383,7 @@ for contador := 0 to filesize(FilaAccData)-1 do
       Datawrite.Number := Dataread.Number;
       Datawrite.PublicKey:= Dataread.PublicKey;
       Datawrite.Hash:= DataRead.Hash;
-      Datawrite.Balance:= IntToStr(StrToInt(dataread.Balance)+amount);
+      Datawrite.Balance:= IntToStr(StrToInt64(dataread.Balance)+amount);
       Datawrite.Lastop:= IntToStr(block);
       seek(FilaAccData,contador);
       write(FilaAccData,datawrite);
@@ -373,7 +393,7 @@ Closefile(FilaAccData);
 End;
 
 // SET ADDRESS PUBLIC KEY (REGISTER)
-Procedure SetAddressPubKey(Address,PubKey:String;block:integer);
+Procedure SetAddressPubKey(Address,PubKey:String;block:int64);
 var
   contador : integer = 0;
   Dataread, DataWrite : AccountData;
@@ -401,8 +421,8 @@ for contador := 0 to filesize(FilaAccData)-1 do
 Closefile(FilaAccData);
 End;
 
-// RETURNS THE NEGATIVE VALUE OF AN INTEGER
-function GetNegativeValue(number:Integer):Integer;
+// RETURNS THE NEGATIVE VALUE OF AN int64
+function GetNegativeValue(number:int64):int64;
 Begin
 if number > 0 then Result := number-(Number*2)
 else Result := number;
@@ -411,11 +431,11 @@ End;
 // CREATES THE BLOCK ZERO
 Procedure CreateBlockZero();
 Begin
-BuildNewBlock(0,'1531896783344','SYSTEM','NONE','','NONE','fe');
+BuildNewBlock(0,'1531896783344','KB589714930B2EAC5296BD2BB887A8AF9E9','NONE','','NONE','fe');
 End;
 
 // UNDONES THE LASTBLOCK
-function UndoneLastBlock(BlNumber:Integer = -1):Boolean;
+function UndoneLastBlock(BlNumber:int64 = -1):Boolean;
 Begin
 Result := False;
 If not STATUS_Updated then
@@ -425,6 +445,8 @@ If not STATUS_Updated then
    end;
 // RESTORE SAVED VALUES
 CopyFile(CONST_ArchivoAccData+'.bak',CONST_ArchivoAccData,true);
+CopyFile(CONST_ArchivoMyTxs+'.bak',CONST_ArchivoMyTxs,true);
+SetMyLastUpdatedBlockTrxs(blnumber-1);
 ArrBlockSummary := copy(LASTBLOCK_ArrBlockSum);
 ArrayMyAddresses := copy(LASTBLOCK_ArrMyAddresses);
 LASTBLOCK_PendingTxs.AddStrings(PendingTxs);

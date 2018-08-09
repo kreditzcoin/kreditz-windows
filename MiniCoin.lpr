@@ -8,8 +8,7 @@ uses
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, MC_Main, indylaz, master, CM_Crypto, commandlineparser, Protocol,
-  TimeUnit, blocks
-  { you can add units after this };
+  TimeUnit, blocks;
 
 {$R *.res}
 

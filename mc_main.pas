@@ -17,6 +17,7 @@ type
 
   TForm1 = class(TForm)
     IdTCPServer1: TIdTCPServer;
+    ImageList1: TImageList;
     TimerStart: TTimer;
     TimerLoop : TTimer;
     TimerMensaje : TTimer;
@@ -32,9 +33,10 @@ type
     procedure TimerStartTimer(Sender: TObject);
     procedure TimerMensajeTimer(Sender: TObject);
     procedure CommandLineKeyup(Sender: TObject; var Key: Word; Shift: TShiftState);
+    Procedure EditSFAmountOnChange(Sender: TObject);
     procedure IdTCPServer1Connect(AContext: TIdContext);
     procedure IdTCPServer1Disconnect(AContext: TIdContext);
-    procedure ReadClientLines(Number, Slot:Integer);
+    procedure ReadClientLines(Number, Slot:int64);
     procedure IdTCPServer1Execute(AContext: TIdContext);
     procedure InitializeForm1();
     procedure ButtonConsolaOnClick(Sender: TObject);
@@ -53,8 +55,10 @@ type
     Procedure ButtonSendFundsOnClick(Sender: TObject);
     Procedure CheckBoxConnectOnChange(Sender: TObject);
     Procedure CheckBoxMinerOnChange(Sender: TObject);
-    procedure GridAddressesPrepareCanvas(sender: TObject; aCol, aRow: Integer; aState: TGridDrawState);
-    Procedure GridPendingPrepareCanvas(sender: TObject; aCol, aRow: Integer; aState: TGridDrawState);
+    procedure GridAddressesPrepareCanvas(sender: TObject; aCol, aRow: integer; aState: TGridDrawState);
+    Procedure GridPendingPrepareCanvas(sender: TObject; aCol, aRow: integer; aState: TGridDrawState);
+    Procedure GrisUserTrxsPrepareCanvas(sender: TObject; aCol, aRow: integer; aState: TGridDrawState);
+    Procedure GridConxsPrepareCanvas(sender: TObject; aCol, aRow: integer; aState: TGridDrawState);
     Procedure DoubleClickSysTray(Sender: TObject);
     Procedure EditUserPortOnEditingDone(Sender: TObject);
     Procedure ComboCPUMinerOnChange(Sender: TObject);
@@ -62,6 +66,7 @@ type
     Procedure CheckBoxAutoConnOnChange(Sender: TObject);
     Procedure CheckBoxFullNodeOnChange(Sender: TObject);
     Procedure CheckBoxUpdateNodesOnChange(Sender: TObject);
+    Procedure CheckBoxMinnedOnChange(Sender: TObject);
 
     private
     Procedure ButtonCloseNotifyOnClick(Sender: TObject);
@@ -83,16 +88,20 @@ implementation
 // FORM SHOW
 procedure TForm1.FormShow(Sender: TObject);
 begin
-// DETECT CPU CORES
-if GetEnvironmentVariable('NUMBER_OF_PROCESSORS') = '' then
-   MAIN_CPUCOUNT := 1
-else MAIN_CPUCOUNT := StrToInt(GetEnvironmentVariable('NUMBER_OF_PROCESSORS'));
-Initializeform1();
-MainMemo.Lines.Add('Kreditz By PJOR, 2018');
-MainMemo.Lines.Add('Version: '+MAIN_Version);
-MainMemo.Lines.Add('-----------------------------------------------------------------------------------');
-Application.ProcessMessages;
-TimerStart.Enabled:=true;
+if MAIN_FirstFormShow then
+   begin
+   // DETECT CPU CORES
+   if GetEnvironmentVariable('NUMBER_OF_PROCESSORS') = '' then
+      MAIN_CPUCOUNT := 1
+   else MAIN_CPUCOUNT := StrToInt(GetEnvironmentVariable('NUMBER_OF_PROCESSORS'));
+   Initializeform1();
+   MainMemo.Lines.Add('Kreditz By PJOR, 2018');
+   MainMemo.Lines.Add('Version: '+MAIN_Version);
+   MainMemo.Lines.Add('-----------------------------------------------------------------------------------');
+   Application.ProcessMessages;
+   TimerStart.Enabled:=true;
+   MAIN_FirstFormShow := false;
+   end;
 end;
 
 // HIDE FORM1 ON TASK BAR WHEN MINIMIZE
@@ -103,7 +112,8 @@ if OptionsData.MinimToTray then
    if Form1.WindowState = wsMinimized then
       begin
       SysTrayIcon.visible:=true;
-      form1.Hide;
+      form1.hide;
+      MAIN_MinOnTray:= true;
       end;
    end;
 end;
@@ -157,6 +167,10 @@ if U_SaveOptions then SaveOptionsToDisk();
      MAIN_AccountNumber := GetAccountNumberFromAddress(ArrayMyAddresses[0].Hash);
      U_MyAccountNumber := false;
      end;
+if U_RebuildMyTxs then
+   begin
+   BuiltMyTrxs();
+   end;
 if NETWORK_SendPing then
    begin
    OutGoingMessages.Add('{MIC JOIN '+
@@ -205,6 +219,7 @@ else if ((GetTotalConex < CONST_MinimunConnectionsToWork) and (STATUS_Connected)
    NETWORK_LastAccount := 0;
    NETWORK_AccsumHash := '';
    MINER_IsMinerOn := false;
+   CloseAllMiningThreads();
    UpdateMyPendingTxs();
    UpdatePanelStatus();
    end;
@@ -222,7 +237,10 @@ if STATUS_Synzed then
       begin
       if STATUS_LastBlockRequested < LOCAL_MyLastBlock+1 then
          begin
-         SendPTCMessage(UpdateNetworkLastBlockData(),'{MIC LASTBLOCK '+IntToStr(LOCAL_MyLastBlock)+' END}');
+         if OptionsData.FullNode = true then contador := LOCAL_MyLastBlock
+         else contador := NETWORK_LastBLock - 20;
+         if contador < LOCAL_MyLastBlock then contador := LOCAL_MyLastBlock;
+         SendPTCMessage(UpdateNetworkLastBlockData(),'{MIC LASTBLOCK '+IntToStr(contador)+' END}');
          STATUS_LastBlockRequested := LOCAL_MyLastBlock+1;
          end;
       end;
@@ -315,7 +333,7 @@ else if MINER_BlockFound then // BLOCK FOUND, BUILD BLOCK
       end;
    end;
 // RUN PERIODICALLY A CONNECTION TO SERVERS
-if StrToInt64(GetTimeStamp()) > CONNECT_LastTime+5000 then
+if strtoint64(GetTimeStamp()) > CONNECT_LastTime+5000 then
    begin
    CONNECT_LastNode := CONNECT_LastNode+1;
    if CONNECT_LastNode > length(ArrayNodos)-1 then CONNECT_LastNode := 0;
@@ -323,15 +341,15 @@ if StrToInt64(GetTimeStamp()) > CONNECT_LastTime+5000 then
       begin
       TryConnectToNode(CONNECT_LastNode);
       end;
-   CONNECT_LastTime := StrToInt64(GetTimeStamp);
+   CONNECT_LastTime := strtoint64(GetTimeStamp);
    end;
 // CHECK ALL CONNECTIONS
 for contador := 1 to CONST_MAXConections do
    begin
    if conexiones[contador].tipo='server' then
       begin
-      ReadClientLines(StrToInt(conexiones[contador].ClientConn),contador);
-      if StrToInt64(GetTimeStamp()) > StrToInt64(conexiones[contador].lastping)+5000 then
+      ReadClientLines(strtoint64(conexiones[contador].ClientConn),contador);
+      if strtoint64(GetTimeStamp()) > strtoint64(conexiones[contador].lastping)+5000 then
          begin
          SendPTCMessage(contador,'{MIC JOIN '+
          IntTostr(GetTotalConex)+' '+
@@ -348,7 +366,7 @@ for contador := 1 to CONST_MAXConections do
    if conexiones[contador].tipo <> '' then
       begin
       {close inactive connections after x time}
-      if ((StrToInt64(GetTimeStamp()) > StrToInt64(conexiones[contador].lastping)+15000)) then
+      if ((strtoint64(GetTimeStamp()) > strtoint64(conexiones[contador].lastping)+15000)) then
          begin
          Outputtext('Conection closed: '+conexiones[contador].ip+' -> Time Out Auth');
          CloseConnectionSlot(contador);
@@ -374,6 +392,9 @@ LoadBLNodesFromDisk();
 UpdateLabels();
 UpdateMyAddresses();
 if OptionsData.AutoConnect then CheckBoxConnect.Checked:=true;
+BuiltMyTrxs();
+UpdateUserTrxs();
+MAIN_ProgramStarted := true;
 TimerLoop.Enabled:=true;
 end;
 
@@ -386,8 +407,8 @@ var
   BlockZipName : String;
 begin
 IPUser := AContext.Connection.Socket.Binding.PeerIP;
-if GetSlotFromIP(IPUser) = 0 then exit;
 LLine := AContext.Connection.IOHandler.ReadLn(IndyTextEncoding_UTF8);
+if GetSlotFromIP(IPUser) = 0 then exit;
 if LLine = 'FILEACCSUM' then
    begin
    if FileExists(CONST_ArchivoAccData) then DeleteFile(CONST_ArchivoAccData);
@@ -410,6 +431,7 @@ else if LLine = 'BLOCKZIP' then
    U_MyLastBLockHash := true;
    UnzipBlockFile(CONST_DirBlocks+'blocks.zip');
    BuildBlockSum();
+   U_RebuildMyTxs := true;
    end
 else
    try
@@ -487,7 +509,7 @@ ClearConection('client',ipuser);
 end;
 
 // CLIENTS: GET LINE
-procedure TForm1.ReadClientLines(Number,Slot:Integer);
+procedure TForm1.ReadClientLines(Number,Slot:int64);
 var
   LLine: String;
   AFileStream : TFileStream;
@@ -523,6 +545,7 @@ While not ConexionesCliente[Number].IOHandler.InputBufferIsEmpty do
       U_MyLastBLockHash := true;
       UnzipBlockFile(CONST_DirBlocks+'blocks.zip');
       BuildBlockSum();
+      U_RebuildMyTxs := true;
       end
    else
       ReadsFromSlots[Slot].Add(LLine);
@@ -548,11 +571,42 @@ if Key=VK_F3 then
    end;
 end;
 
+// CHECK KEYPRESS ON AMMOUNT EDIT
+Procedure Tform1.EditSFAmountOnChange(Sender: TObject);
+var
+  LineText : String;
+  amount : real;
+  Available, IntAmount, fee, total : int64;
+Begin
+Available := GetTotalAccountBalance()-GetTotalAccountPendingPayments();
+LineText := EditSFAmount.Text;
+if linetext = '' then
+   begin
+   LabelCorAmo.font.Color := clBlack;
+   LabelCorAmo.Caption:= '0,00';
+   exit;
+   end;
+if not IsValidfloat(LineText) then
+   begin
+   LabelCorAmo.Caption:='Err';
+   exit;
+   end;
+Amount := StrToFloat(linetext)*100;
+IntAmount := Round(Amount);
+fee := GetComisionValue(IntAmount);
+Total := IntAmount+fee;
+if total > Available then LabelCorAmo.Font.Color :=clRed else LabelCorAmo.font.Color := clBlack;
+LabelCorAmo.Caption := Int2CurrencyStr(IntAmount)+' + '+Int2CurrencyStr(fee)+' (Fee) = '+
+  Int2CurrencyStr(Total);
+End;
+
 // CREATES COMPONENTS FOR MAIN FORM
 Procedure Tform1.InitializeForm1();
 var
-  contador : Integer;
+  contador : integer;
+  ABitmap: TBitmap;
 Begin
+ABitmap := TBitmap.Create;
 // NON-VISUAL COMPONENTS -> FORM
 PendingTXs := TStringlist.Create;
 LASTBLOCK_PendingTxs := TStringlist.Create;
@@ -580,8 +634,9 @@ SystrayIcon := TTrayIcon.Create(form1);
 SystrayIcon.BalloonTimeout:=3000;
 SystrayIcon.BalloonTitle:='Kreditz Wallet';
 SystrayIcon.Hint:='Kreditz Ver. '+MAIN_Version;
-//SystrayIcon.Icon.LoadFromFile('minicoin.ico');
 SysTrayIcon.OnDblClick:=@DoubleClickSysTray;
+ImageList1.GetBitmap(0,ABitmap);
+SysTrayIcon.Icon.Assign(ABitmap);
 
 TimerLoop:= TTimer.Create(Form1);
 Timerloop.Enabled:=false;TimerLoop.Interval:=200;
@@ -601,6 +656,7 @@ TimerMensaje.OnTimer:=@TimerMensajeTimer;
 PanelMensaje := TPanel.Create(Form1);PanelMensaje.Parent:=form1;
 PanelMensaje.Left:=270;PanelMensaje.Top:=190;PanelMensaje.Height:=20;PanelMensaje.Width:=100;
 PanelMensaje.BevelColor:=clBlack;PanelMensaje.Visible:=false;
+PanelMensaje.font.Name:='consolas';PanelMensaje.Font.Size:=14;
 
 ButtonWallet := TButton.Create(Form1);ButtonWallet.Parent:=form1;
 ButtonWallet.Left:=8;ButtonWallet.Top:=2;ButtonWallet.Height:=18;ButtonWallet.Width:=65;
@@ -678,8 +734,8 @@ PanelData.Visible:=false;
    LabelConections.Left:=8;LabelConections.Top:=32;LabelConections.Font.Color:=clBlack;
    LabelConections.Caption:='Conections: ';LabelConections.Visible:=true;
 
-   LabelNodes := TLabel.Create(Form1);LabelNodes.Parent:=PanelData;LabelNodes.
-   Font.Name:='consolas';LabelNodes.Font.Size:=8;
+   LabelNodes := TLabel.Create(Form1);LabelNodes.Parent:=PanelData;
+   LabelNodes.Font.Name:='consolas';LabelNodes.Font.Size:=8;
    LabelNodes.Left:=8;LabelNodes.Top:=46;LabelNodes.Font.Color:=clBlack;
    LabelNodes.Caption:='ReachNodes: ';LabelNodes.Visible:=true;
 
@@ -838,12 +894,15 @@ PanelNetwork.Visible:=false;
 
       GridConxs := TStringGrid.Create(Form1);GridConxs.Parent:=PanelConexs;
       GridConxs.Left:=8;GridConxs.Top:=22;GridConxs.Height:=126;GridConxs.Width:=596;
-      GridConxs.ColCount:=5;GridConxs.rowcount:=CONST_MAXConections+1;
+      GridConxs.ColCount:=6;GridConxs.rowcount:=CONST_MAXConections+1;
+      GridConxs.Font.Name:='consolas';GridConxs.Font.Size:=8;
       GridConxs.FixedCols:=0;GridConxs.FixedRows:=1;
       GridConxs.Options:= GridConxs.Options+[goRowSelect];
       GridConxs.ScrollBars:=ssvertical;GridConxs.AutoSize:=true;
       GridConxs.Cells[0,0]:='#';GridConxs.Cells[1,0]:='IP';GridConxs.Cells[2,0]:='Type';
       GridConxs.Cells[3,0]:='LastBlock';GridConxs.Cells[4,0]:='LBHash';
+      ;GridConxs.Cells[5,0]:='AccSumHash';
+      GridConxs.OnPrepareCanvas:= @GridConxsPrepareCanvas;
 
    PanelOptions := TScrollBox.Create(Form1);PanelOptions.Parent:=PanelNetwork;
    PanelOptions.Left:=320;PanelOptions.Top:=8;PanelOptions.Height:=176;
@@ -888,7 +947,6 @@ PanelNetwork.Visible:=false;
       CheckBoxMin.Color:=clRed;CheckBoxMin.caption:='';
       CheckBoxMin.ShowHint:=true;CheckBoxMin.Hint:='Check to minimize to System tray';
       CheckBoxMin.Visible:=true;CheckBoxMin.OnChange:=@CheckBoxMinOnChange;
-      CheckBoxMin.Enabled:=false;
 
       LabelAutoConnect := TLabel.Create(Form1);LabelAutoConnect.Parent:=PanelOptions;
       LabelAutoConnect.Caption:='Autoconnect at launch';LabelAutoConnect.Font.Size:=8;
@@ -913,7 +971,6 @@ PanelNetwork.Visible:=false;
       CheckBoxFullNode.Color:=clRed;CheckBoxFullNode.caption:='';
       CheckBoxFullNode.ShowHint:=true;CheckBoxFullNode.Hint:='Check to Run a Full Node';
       CheckBoxFullNode.Visible:=true;CheckBoxFullNode.OnChange:=@CheckBoxFullNodeOnChange;
-      CheckBoxFullNode.Enabled:=false;
 
       LabelUpdateNodes := TLabel.Create(Form1);LabelUpdateNodes.Parent:=PanelOptions;
       LabelUpdateNodes.Caption:='Update Nodes from Network';LabelUpdateNodes.Font.Size:=8;
@@ -926,6 +983,19 @@ PanelNetwork.Visible:=false;
       CheckBoxUpdateNodes.Color:=clRed;CheckBoxUpdateNodes.caption:='';
       CheckBoxUpdateNodes.ShowHint:=true;CheckBoxUpdateNodes.Hint:='Check to Update Nodes from Peers';
       CheckBoxUpdateNodes.Visible:=true;CheckBoxUpdateNodes.OnChange:=@CheckBoxUpdateNodesOnChange;
+
+      LabelShowMinned := TLabel.Create(Form1);LabelShowMinned.Parent:=PanelOptions;
+      LabelShowMinned.Caption:='Show minned as Trx';LabelShowMinned.Font.Size:=8;
+      LabelShowMinned.Font.Name:='consolas';
+      LabelShowMinned.Left:=8;LabelShowMinned.Top:=190;
+
+      CheckBoxMinned := TCheckBox.Create(Form1);CheckBoxMinned.Parent:=PanelOptions;
+      CheckBoxMinned.Left:=250;CheckBoxMinned.Top:=190;
+      CheckBoxMinned.Height:=20;CheckBoxMinned.Width:=20;
+      CheckBoxMinned.Color:=clRed;CheckBoxMinned.caption:='';
+      CheckBoxMinned.ShowHint:=true;CheckBoxMinned.Hint:='Check to show minned blocks as Trxs';
+      CheckBoxMinned.Visible:=true;CheckBoxMinned.OnChange:=@CheckBoxMinnedOnChange;
+
 
 // END VISUAL COMPONENTS -> PANEL NODES
 
@@ -1023,6 +1093,12 @@ PanelWallet.Visible:=true;
       EditSFAmount.Left:=112;EditSFAmount.Top:=42;EditSFAmount.Height:=12;EditSFAmount.Width:=258;
       EditSFAmount.Color:=clBlack;EditSFAmount.Font.Color:=clWhite;
       EditSFAmount.Visible:=true;EditSFAmount.Alignment:=taRightJustify;
+      EditSFAmount.OnChange:=@EditSFAmountOnChange;
+
+      LabelCorAmo := TLabel.Create(Form1);LabelCorAmo.Parent:=PanelSendFunds;
+      LabelCorAmo.Caption:='0,00';LabelCorAmo.Font.Size:=8;
+      LabelCorAmo.Font.Name:='consolas';LabelCorAmo.Alignment:=taRightJustify;
+      LabelCorAmo.Left:=344;LabelCorAmo.Top:=66;
 
       ButtonSendFunds := TButton.Create(Form1);ButtonSendFunds.Parent:=PanelSendFunds;
       ButtonSendFunds.Left:=160;ButtonSendFunds.Top:=124;
@@ -1040,6 +1116,18 @@ PanelWallet.Visible:=true;
    GridPending.ScrollBars:=ssvertical;GridPending.Font.Size:=12;
    GridPending.Cells[0,0]:='Amount';GridPending.ColWidths[0]:= 210;
    GridPending.OnPrepareCanvas:= @GridPendingPrepareCanvas;
+
+   GrisUserTrxs := TStringGrid.Create(Form1);GrisUserTrxs.Parent:=PanelWallet;
+   GrisUserTrxs.Left:=388;GrisUserTrxs.Top:=206;GrisUserTrxs.Height:=144;
+   GrisUserTrxs.Width:=232;GrisUserTrxs.ColCount:=2;GrisUserTrxs.rowcount:=1;
+   GrisUserTrxs.FixedCols:=0;GrisUserTrxs.FixedRows:=1;
+   GrisUserTrxs.Font.Name:='consolas';
+   GrisUserTrxs.ScrollBars:=ssvertical;GrisUserTrxs.Font.Size:=10;
+   GrisUserTrxs.Cells[0,0]:='Block';GrisUserTrxs.ColWidths[0]:= 50;
+   GrisUserTrxs.Cells[1,0]:='Amount';GrisUserTrxs.ColWidths[1]:= 160;
+   GrisUserTrxs.OnPrepareCanvas:= @GrisUserTrxsPrepareCanvas;
+   GrisUserTrxs.Options:= GrisUserTrxs.Options+[goRowSelect];
+
 // END VISUAL COMPONENTS -> PANEL WALLET
 
 // FORM NOTIFY
@@ -1065,7 +1153,7 @@ FormNotify.PopupParent := Self;
    ButtonCloseNotify.Font.Size:=12;
    ButtonCloseNotify.Visible:=true;ButtonCloseNotify.OnClick:=@ButtonCloseNotifyOnClick;
 // END FORM NOTIFY
-
+ABitmap.Free;
 End;
 
 // ON FORM CLOSE
@@ -1191,8 +1279,17 @@ End;
 
 // CLICK TO SET THE MAXIMUM AVAILABLE TO SEND
 Procedure TForm1.ButtonMaxAmoOnClick(Sender: TObject);
+var
+  available : int64;
+  Cadena : string;
+  CadLen : integer;
 Begin
-EditSFAmount.Text:=IntToStr(MAIN_AccountBalance-GetComisionValue(MAIN_AccountBalance));
+Available := GetTotalAccountBalance()-GetTotalAccountPendingPayments();
+available := Available - GetComisionValue(MAIN_AccountBalance);
+cadena := IntToStr(Available);
+CadLen := Length(cadena);
+Cadena := copy(cadena,1,CadLen-2)+','+copy(Cadena,CadLen-1,2);
+EditSFAmount.Text:=Cadena;
 End;
 
 // CLICK TO SEND FUNDS
@@ -1203,7 +1300,7 @@ EditSFDesti.Text := '';EditSFAmount.Text:='';
 End;
 
 //DRAW GRIDADDRESSES
-procedure TForm1.GridAddressesPrepareCanvas(sender: TObject; aCol, aRow: Integer; aState: TGridDrawState);
+procedure TForm1.GridAddressesPrepareCanvas(sender: TObject; aCol, aRow: integer; aState: TGridDrawState);
 var
   ts: TTextStyle;
 begin
@@ -1223,7 +1320,7 @@ if (ACol = 1) and (aRow>0) then
 end;
 
 //DRAW GRIDPENDING
-Procedure TForm1.GridPendingPrepareCanvas(sender: TObject; aCol, aRow: Integer; aState: TGridDrawState);
+Procedure TForm1.GridPendingPrepareCanvas(sender: TObject; aCol, aRow: integer; aState: TGridDrawState);
 var
   ts: TTextStyle;
 Begin
@@ -1242,6 +1339,51 @@ if (aRow>0) then
    if Copy(GridPending.Cells[0,aRow],1,1) = '-' then GridPending.Canvas.Font.Color:=clRed
    else GridPending.Canvas.Font.Color:=clGreen;
    end;
+End;
+
+//DRAW GRID USER TRXS
+Procedure TForm1.GrisUserTrxsPrepareCanvas(sender: TObject; aCol, aRow: integer; aState: TGridDrawState);
+var
+  ts: TTextStyle;
+Begin
+if ARow=0 then GrisUserTrxs.Canvas.Font.Style := [fsBold];
+if ((aRow=0) and (aCol=0)) then
+   begin
+   ts := GrisUserTrxs.Canvas.TextStyle;
+   ts.Alignment := taCenter;
+   GrisUserTrxs.Canvas.TextStyle := ts;
+   end;
+if ((aRow=0) and (aCol=1)) then
+   begin
+   ts := GrisUserTrxs.Canvas.TextStyle;
+   ts.Alignment := taRightJustify;
+   GrisUserTrxs.Canvas.TextStyle := ts;
+   end;
+if ((aRow>0) and (acol=1)) then
+   begin
+   ts := GrisUserTrxs.Canvas.TextStyle;
+   ts.Alignment := taRightJustify;
+   GrisUserTrxs.Canvas.TextStyle := ts;
+   if Copy(GrisUserTrxs.Cells[1,aRow],1,1) = '-' then GrisUserTrxs.Canvas.Font.Color:=clRed
+   else GrisUserTrxs.Canvas.Font.Color:=clGreen;
+   end;
+if ((aRow>0) and (acol=0)) then
+   begin
+   ts := GrisUserTrxs.Canvas.TextStyle;
+   ts.Alignment := taCenter;
+   GrisUserTrxs.Canvas.TextStyle := ts;
+   end;
+End;
+
+// DRAW GRID CONEXIONS
+Procedure Tform1.GridConxsPrepareCanvas(sender: TObject; aCol, aRow: integer; aState: TGridDrawState);
+var
+  ts: TTextStyle;
+Begin
+if ARow=0 then GridConxs.Canvas.Font.Style := [fsBold];
+ts := GridConxs.Canvas.TextStyle;
+ts.Alignment := taCenter;
+GridConxs.Canvas.TextStyle := ts;
 End;
 
 // SHOW NOTIFY FORM
@@ -1267,23 +1409,27 @@ Begin
 SysTrayIcon.visible:=false;
 Form1.WindowState:=wsNormal;
 Form1.Show;
+MAIN_MinOnTray := false;
 End;
 
 // CHANGE USER LISTINENGIN PORT
 Procedure TForm1.EditUserPortOnEditingDone(Sender: TObject);
 Begin
+if not MAIN_ProgramStarted then exit;
 ProcessLines.Add('SETPORT '+EditUserPort.Text);
 End;
 
 // CHANGE CPUS MINING
 Procedure TForm1.ComboCPUMinerOnChange(Sender: TObject);
 Begin
+if not MAIN_ProgramStarted then exit;
 ProcessLines.Add('CPUMINE '+ComboCPUMiner.Text);
 End;
 
 // CHANGE MINIMIZE TO TASK
 Procedure TForm1.CheckBoxMinOnChange(Sender: TObject);
 Begin
+if not MAIN_ProgramStarted then exit;
 if CheckBoxMin.Checked then ProcessLines.Add('MINTOTASK ON')
 else ProcessLines.Add('MINTOTASK OFF');
 End;
@@ -1291,6 +1437,7 @@ End;
 // CHANGE AUTOCONNECTION ON START UP
 Procedure TForm1.CheckBoxAutoConnOnChange(Sender: TObject);
 Begin
+if not MAIN_ProgramStarted then exit;
 if CheckBoxAutoConn.Checked then ProcessLines.Add('AUTOCONN ON')
 else ProcessLines.Add('AUTOCONN OFF');
 end;
@@ -1298,6 +1445,7 @@ end;
 // CHANGE FULL NODE MODE
 Procedure TForm1.CheckBoxFullNodeOnChange(Sender: TObject);
 Begin
+if not MAIN_ProgramStarted then exit;
 if CheckBoxFullNode.Checked then ProcessLines.Add('FULLNODE ON')
 else ProcessLines.Add('FULLNODE OFF');
 end;
@@ -1305,12 +1453,18 @@ end;
 // CHANGE UPDATE NODES FROM PEERS
 Procedure TForm1.CheckBoxUpdateNodesOnChange(Sender: TObject);
 Begin
+if not MAIN_ProgramStarted then exit;
 if CheckBoxUpdateNodes.Checked then ProcessLines.Add('UPDATENODES ON')
 else ProcessLines.Add('UPDATENODES OFF');
 end;
 
-
-
+// CHANEG SHOW MINNED AS TRX
+Procedure TForm1.CheckBoxMinnedOnChange(Sender: TObject);
+Begin
+if not MAIN_ProgramStarted then exit;
+if CheckBoxMinned.Checked then ProcessLines.Add('SHOWMINNED ON')
+else ProcessLines.Add('SHOWMINNED OFF');
+End;
 
 END. // END FORM
 

@@ -9,30 +9,30 @@ uses
   IdGlobal, Zipper;
 
 function IsValidProtocol(line:String):Boolean;
-procedure ParseProtocolConnection(Lines:TStringList;Slot:Integer);
-procedure PTC_Join(TextLine:String;slot:integer;Answer:boolean);
-procedure PTC_ServerClose(slot:integer);
+procedure ParseProtocolConnection(Lines:TStringList;Slot:int64);
+procedure PTC_Join(TextLine:String;slot:int64;Answer:boolean);
+procedure PTC_ServerClose(slot:int64);
 procedure SendOutGoingMessages();
-procedure SendPTCMessage(Slot:Integer;Message:String);
-procedure PTC_ACRE(Textline:String;slot:integer);
-function TranxAlreadyPending(TypeOfTrx, ValTrx:String;ParamNum:Integer):boolean;
-procedure PTC_SendPending(Slot:Integer);
+procedure SendPTCMessage(Slot:int64;Message:String);
+procedure PTC_ACRE(Textline:String;slot:int64);
+function TranxAlreadyPending(TypeOfTrx, ValTrx:String;ParamNum:int64):boolean;
+procedure PTC_SendPending(Slot:int64);
 function ReplaceTimestamp(TextLine:String):String;
 procedure AddPendingByTimestamp(Pending:String);
 procedure PTC_Newblock(TextLine:String);
-procedure SendAccDataFile(slot:integer);
-procedure PTC_TRFR(Textline:string;slot:integer);
-procedure PTC_GetNodes(Textline:string;slot:integer);
-procedure PTC_SaveNodes(Textline:string;slot:integer);
+procedure SendAccDataFile(slot:int64);
+procedure PTC_TRFR(Textline:string;slot:int64);
+procedure PTC_GetNodes(Textline:string;slot:int64);
+procedure PTC_SaveNodes(Textline:string;slot:int64);
 function GetComisionValue(Monto:int64):int64;
 function SendFundsFromAddress(Destination:String; AddressIndex,Restante:int64):int64;
 function GetAddressPaymentsOnPending(Address:String):Int64;
-Procedure PTC_SendZipedBlocks(textline:string;slot:integer);
+Procedure PTC_SendZipedBlocks(textline:string;slot:int64);
 procedure UnzipBlockFile(filename:String);
-function GetCharsFromMinerDiff(minerdiff:string):integer;
-Function GetStepsFromMinerDiff(minerdiff:string):integer;
+function GetCharsFromMinerDiff(minerdiff:string):int64;
+Function GetStepsFromMinerDiff(minerdiff:string):int64;
 function GetNodeFromString(DataString:String):NodeData;
-procedure PTC_InBlRe(Textline:string;slot:integer);
+procedure PTC_InBlRe(Textline:string;slot:int64);
 
 implementation
 
@@ -50,7 +50,7 @@ else result := false;
 End;
 
 // PARSES A PROTOCOL LINE
-Procedure ParseProtocolConnection(Lines:TStringList;Slot:Integer);
+Procedure ParseProtocolConnection(Lines:TStringList;Slot:int64);
 var
   CommandUsed : String = '';
   TextLine : String = '';
@@ -84,7 +84,7 @@ while lines.Count > 0 do
 end;
 
 // HELLO MESSAGES BETWEN PEERS
-Procedure PTC_Join(TextLine:String;slot:integer;Answer:boolean);
+Procedure PTC_Join(TextLine:String;slot:int64;Answer:boolean);
 var
   conections,block,lastblockhash,account,pending,port,accsumhash:String;
 Begin
@@ -121,11 +121,11 @@ if Answer then
    LOCAL_MyAccsumHash+
    ' END}');
    end;
-STATUS_LastPing := StrToInt(copy(conexiones[slot].lastping,1,10));
+STATUS_LastPing := StrToInt64(copy(conexiones[slot].lastping,1,10));
 end;
 
 // SEND A PROTOCOL MESSAGE TO A SPECIFIC SLOT
-Procedure SendPTCMessage(Slot:Integer;Message:String);
+Procedure SendPTCMessage(Slot:int64;Message:String);
 Begin
 if conexiones[Slot].tipo='client' then
    begin
@@ -154,7 +154,7 @@ if conexiones[Slot].tipo='server' then
 end;
 
 // CLIENT RECEIVES A NOTIFICATION THAT A SERVER CLOSED THE CONNECTION
-procedure PTC_ServerClose(slot:integer);
+procedure PTC_ServerClose(slot:int64);
 Begin
 ReadsFromSlots[slot].Clear;
 ConexionesCliente[Slot].Disconnect;
@@ -165,7 +165,7 @@ End;
 // SEND ALL OUTGOING MESSAGES TO ALL AVAILABLE PEERS
 Procedure SendOutGoingMessages();
 Var
-  Slot :Integer = 1;
+  Slot :integer = 1;
 Begin
 While OutGoingMessages.Count > 0 do
    begin
@@ -178,7 +178,7 @@ While OutGoingMessages.Count > 0 do
 End;
 
 // PROCESS A NEW ACCOUNT REQUEST
-Procedure PTC_ACRE(Textline:String;slot:Integer);
+Procedure PTC_ACRE(Textline:String;slot:int64);
 var
   timestamp,ip,publickey,ADhash,OPHash,SignedString:String;
   ResultStr : String;
@@ -216,9 +216,9 @@ End;
 // ADD A PENDING TRX BY TIMESTAMP
 Procedure AddPendingByTimestamp(Pending:String);
 var
-  contador : integer = 0;
+  contador : int64 = 0;
   Timevalue, TimePending : Int64;
-  resultado : integer = 0;
+  resultado : int64 = 0;
   Insertar : Boolean = false;
 Begin
 Timevalue := StrToInt64(GetParameterFromCommandLine(Pending,2));
@@ -267,25 +267,25 @@ if StrToInt(blockNumber) = BlockSumLastBlock() then  // If the same number, dete
       end
    else // NOT IDENTICAL
       begin
-      if StrToInt64(timestamp) >= StrToInt64(GetBlockData(StrToInt(blockNumber)).TimeEnd) then
+      if StrToInt64(timestamp) >= StrToInt64(GetBlockData(StrToInt64(blockNumber)).TimeEnd) then
          begin
          OutputText('Block '+(blockNumber)+' older received: Omitted');
          exit;
          end
-      else if StrToInt64(timestamp) < StrToInt64(GetBlockData(StrToInt(blockNumber)).TimeEnd) then // the new is the good one
+      else if StrToInt64(timestamp) < StrToInt64(GetBlockData(StrToInt64(blockNumber)).TimeEnd) then // the new is the good one
          begin
          OutputText('*************************************');
          OutputText('Better block '+blockNumber+' received');
          OutputText('*************************************');
-         UndoneLastBlock(StrToInt(blockNumber));
-         BuildNewBlock(StrToInt(blockNumber),TimeStamp,Account,Solution,NewBlHash,TargetHash,Difficulty);
+         UndoneLastBlock(StrToInt64(blockNumber));
+         BuildNewBlock(StrToInt64(blockNumber),TimeStamp,Account,Solution,NewBlHash,TargetHash,Difficulty);
          exit;
          end;
       end;
    end;
-if StrToInt(blockNumber) = BlockSumLastBlock()+1 then
+if StrToInt64(blockNumber) = BlockSumLastBlock()+1 then
    begin
-   if VerifyMinerResult(Solution,Difficulty,TargetHash,StrToInt(blockNumber)) > 0 then
+   if VerifyMinerResult(Solution,Difficulty,TargetHash,StrToInt64(blockNumber)) > 0 then
       begin
       outputtext('Wrong Solution Block '+blockNumber+' : '+solution+' for '+MINER_TargetHash);
       DoIt := false;
@@ -293,13 +293,13 @@ if StrToInt(blockNumber) = BlockSumLastBlock()+1 then
    if DoIT then
       begin
       OutputText('Solution Ok for block: '+blockNumber+ '. Building block');
-      BuildNewBlock(StrToInt(blockNumber),TimeStamp,Account,Solution,NewBlHash,TargetHash,Difficulty);
+      BuildNewBlock(StrToInt64(blockNumber),TimeStamp,Account,Solution,NewBlHash,TargetHash,Difficulty);
       end;
    end;
 End;
 
 // RETURNS IF A TRANSACTION IS ALREADY PENDING / PARAMNUM IS +1 SINCE COMMAND=1
-function TranxAlreadyPending(TypeOfTrx, ValTrx:String;ParamNum:Integer):boolean;
+function TranxAlreadyPending(TypeOfTrx, ValTrx:String;ParamNum:int64):boolean;
 var
   contador : integer = 0;
   TypeofPending : String;
@@ -318,9 +318,9 @@ if PendingTXs.Count > 0 then
 End;
 
 // SEND ALL PENDING TRX TO PEER
-procedure PTC_SendPending(Slot:Integer);
+procedure PTC_SendPending(Slot:int64);
 var
-  contador : Integer;
+  contador : integer;
 Begin
 if PendingTXs.Count > 0 then
    begin
@@ -332,7 +332,7 @@ if PendingTXs.Count > 0 then
 End;
 
 // SEND ACCDATA FILE
-procedure SendAccDataFile(slot:integer);
+procedure SendAccDataFile(slot:int64);
 var
   AFileStream : TFileStream;
 begin
@@ -354,7 +354,7 @@ AFileStream := TFileStream.Create(CONST_ArchivoAccData, fmOpenRead + fmShareDeny
 End;
 
 // PROCESS A TRANSFER REQUEST
-procedure PTC_TRFR(Textline:string;slot:integer);
+procedure PTC_TRFR(Textline:string;slot:int64);
 var
   TimeStamp, Sender, Destination, Monto, SigHash, OpHash : String;
   Proceder : Boolean = true;
@@ -365,7 +365,7 @@ Destination := GetParameterFromCommandLine(Textline,3);
 Monto := GetParameterFromCommandLine(Textline,4);
 SigHash := GetParameterFromCommandLine(Textline,5);
 OpHash := GetParameterFromCommandLine(Textline,6);
-if GetAddressBalanceFromDisk(Sender)-GetAddressPaymentsOnPending(sender) < StrToInt(Monto) then Proceder := false;
+if GetAddressBalanceFromDisk(Sender)-GetAddressPaymentsOnPending(sender) < StrToInt64(Monto) then Proceder := false;
 if TranxAlreadyPending('TRFR',OpHash,7) then Proceder := false;
 // if sighash is invalid then proceder := false;
 if not VerifySignedString(TimeStamp+Sender+Destination+Monto,SigHash,GetAddressPubKey(Sender)) then exit;
@@ -414,7 +414,7 @@ End;
 // RETURNS THE TOTAL PAYMENTS PENDING FOR AN ADDRESS
 function GetAddressPaymentsOnPending(Address:String):Int64;
 var
-  contador : Integer;
+  contador : integer;
   MontoTotal : Int64 = 0;
   Tipo, Sender : String;
 Begin
@@ -434,9 +434,9 @@ Result := MontoTotal;
 End;
 
 // SEND THE BLOCS ZIPPED
-Procedure PTC_SendZipedBlocks(textline:string;slot:integer);
+Procedure PTC_SendZipedBlocks(textline:string;slot:int64);
 var
-  FirstBlock, LastBlock : Integer;
+  FirstBlock, LastBlock : int64;
   MyZipFile: TZipper;
   contador : integer;
   AFileStream : TFileStream;
@@ -446,7 +446,7 @@ if not IsValidInt(GetParameterFromCommandLine(textline,1)) then
    SendPTCMessage(slot,'{MIC INVALIDBLOCKREQUEST END}');
    exit;
    end;
-FirstBlock := StrToInt(GetParameterFromCommandLine(textline,1))+1;
+FirstBlock := StrToInt64(GetParameterFromCommandLine(textline,1))+1;
 LastBlock := FirstBlock+99;
 If LastBlock > LOCAL_MyLastBlock then LastBlock := LOCAL_MyLastBlock;
 MyZipFile := TZipper.Create;
@@ -493,7 +493,7 @@ deletefile(filename);
 end;
 
 // OBTAINS THE NUMBER OF CHARACTERS FROM A DIFFICUL STRING
-function GetCharsFromMinerDiff(minerdiff:string):integer;
+function GetCharsFromMinerDiff(minerdiff:string):int64;
 var
   Lettra : Char;
 Begin
@@ -502,7 +502,7 @@ Result := Ord(Lettra)-96;
 End;
 
 // OBTAINS THE NUMBER OF STEPS FROM A DIFFICUL STRING
-Function GetStepsFromMinerDiff(minerdiff:string):integer;
+Function GetStepsFromMinerDiff(minerdiff:string):int64;
 var
   Lettra : Char;
 Begin
@@ -511,11 +511,11 @@ Result := Ord(Lettra)-96;
 End;
 
 // SEND THE NODES TO PEER
-procedure PTC_GetNodes(Textline:string;slot:integer);
+procedure PTC_GetNodes(Textline:string;slot:int64);
 var
   NodesString : String = '';
-  NodesAdded : Integer = 0;
-  Counter : Integer;
+  NodesAdded : integer = 0;
+  Counter : integer;
 Begin
 for counter := 0 to length(ArrayNodos)-1 do
    begin
@@ -528,7 +528,7 @@ SendPTCMessage(slot,NodesString);
 End;
 
 // SAVE NODES RECEIVED FROM PEER
-procedure PTC_SaveNodes(Textline:string;slot:integer);
+procedure PTC_SaveNodes(Textline:string;slot:int64);
 var
   ArrParameters : Array of string;
   contador : integer = 1;
@@ -552,6 +552,7 @@ for contador := 0 to length(ArrParameters)-1 do
    begin
    thisnode := GetNodeFromString(ArrParameters[contador]);
    if uppercase(thisnode.ip) = 'LOCALHOST' then thisnode.ip := '127.0.0.1';
+   if thisnode.ip = '127.0.0.1' then continue;
    if not NodeExists(thisnode.ip,thisnode.port) then AddNewNode(thisnode.ip,thisnode.port);
    end;
 End;
@@ -591,7 +592,7 @@ result := Resultado;
 End;
 
 // READJUST LAST BLOCK REQUESTED IF PEER SAYS WE MADE A BAD REQUEST
-procedure PTC_InBlRe(Textline:string;slot:integer);
+procedure PTC_InBlRe(Textline:string;slot:int64);
 Begin
 if LOCAL_MyLastBlock < STATUS_LastBlockRequested then
    STATUS_LastBlockRequested := LOCAL_MyLastBlock;
