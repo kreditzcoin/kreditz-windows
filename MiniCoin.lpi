@@ -34,7 +34,7 @@
         <PackageName Value="LCL"/>
       </Item3>
     </RequiredPackages>
-    <Units Count="10">
+    <Units Count="9">
       <Unit0>
         <Filename Value="MiniCoin.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -72,19 +72,14 @@
         <UnitName Value="Protocol"/>
       </Unit6>
       <Unit7>
-        <Filename Value="timeunit.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="TimeUnit"/>
-      </Unit7>
-      <Unit8>
         <Filename Value="todo.txt"/>
         <IsPartOfProject Value="True"/>
-      </Unit8>
-      <Unit9>
+      </Unit7>
+      <Unit8>
         <Filename Value="blocks.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Blocks"/>
-      </Unit9>
+      </Unit8>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

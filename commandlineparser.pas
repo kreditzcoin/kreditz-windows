@@ -5,7 +5,7 @@ unit CommandLineParser;
 interface
 
 uses
-  Classes, SysUtils, master, CM_Crypto, TimeUnit, Forms;
+  Classes, SysUtils, master, CM_Crypto, Forms;
 
    Procedure ParseCommandLine(Linetext:String);
    Function GetCommandLineCommand(LineText:String):String;
@@ -72,15 +72,12 @@ else if UpperCase(CommandUsed) = 'HASHCOUNTER' then OutputText(IntToStr(MINER_Ha
 else if UpperCase(CommandUsed) = 'ACCSUMHASH' then OutputText(LOCAL_MyAccsumHash)
 else if UpperCase(CommandUsed) = 'MINERON' then TurnMinerOn()
 else if UpperCase(CommandUsed) = 'MINEROFF' then TurnMinerOff()
-else if UpperCase(CommandUsed) = 'NETTIME' then OutputText(GetNetworkTimestamp())
-else if UpperCase(CommandUsed) = 'TIMESTAMP' then OutputText(GetTimestamp())
+else if UpperCase(CommandUsed) = 'NETTIME' then OutputText(TimestampToDate(getSNTPStringTime()))
 else if UpperCase(CommandUsed) = 'CLS' then ClearMemoLines()
 else if UpperCase(CommandUsed) = 'ACCOUNTS' then showaccounts()
 else if UpperCase(CommandUsed) = 'NEWADDRESS' then CreateNewAddress()
 else if UpperCase(CommandUsed) = 'BLOCKSUM' then ShowBlockSum()
 else if UpperCase(CommandUsed) = 'SENDTO' then SendFunds(linetext)
-else if UpperCase(CommandUsed) = 'LBUNDONE' then UndoneLastBlock() // TEMP
-else if UpperCase(CommandUsed) = 'LBDATA' then LBData()
 else if UpperCase(CommandUsed) = 'LBNUM' then OutputText('Last Block on BlockSum: '+IntToStr(BlockSumLastBlock()))
 else if UpperCase(CommandUsed) = 'GETDIFF' then GetCurrCiff()
 else if UpperCase(CommandUsed) = 'RECON' then ReconnectOn()
@@ -97,7 +94,7 @@ else if UpperCase(CommandUsed) = 'AUTOCONN' then AutoConn(linetext)
 else if UpperCase(CommandUsed) = 'FULLNODE' then FullNode(linetext)
 else if UpperCase(CommandUsed) = 'UPDATENODES' then UpdateNodes(linetext)
 else if UpperCase(CommandUsed) = 'SHOWMINNED' then ShowMinned(linetext)
-
+else if UpperCase(CommandUsed) = 'LBSTARTIME' then OutputText(TimestampToDate(GetBlockData(BlockSumLastBlock()).TimeStart))
 else OutPutText('Unknown command: '+CommandUsed,false);
 end;
 
@@ -386,9 +383,17 @@ var
   Monto, comision, MontoMasComision, Restante : int64;
   Contador : int64;
   MontoFromAddress : int64;
+  Concepto : String;
 Begin
+if not STATUS_Updated then
+   begin
+   Outputtext('You need connect and update to the network',false);
+   ShowAlert('Your wallet is not updated');
+   exit;
+   end;
 Destination := GetParameterFromCommandLine(linetext,1);
 Amount := GetParameterFromCommandLine(linetext,2);
+Concepto := GetParameterFromCommandLine(linetext,3);
 if IsValidInt(Destination) then
    begin
    Destination := GetAddressFromAccountNumber(StrToInt64(Destination));
@@ -401,8 +406,8 @@ if IsValidInt(Destination) then
    end;
 if ((Destination = '') or (not IsValidAddress(Destination))) then
    begin
-   Outputtext('Invalid Destination'+destination,false);
-   ShowAlert('Invalid Destination'+destination);
+   Outputtext('Invalid Destination: '+destination,false);
+   ShowAlert('Invalid Destination '+destination);
    exit;
    end;
 if IsAddressMine(Destination)>=0 then
@@ -441,12 +446,18 @@ While Restante > 0 do
    begin
    if StrToInt64(ArrayMyAddresses[contador].Balance) > 0 then
       begin
-      MontoFromAddress := SendFundsFromAddress(Destination, contador, Restante);
+      MontoFromAddress := SendFundsFromAddress(Destination, contador, Restante, concepto);
       Restante := Restante - MontoFromAddress;
       end;
    contador := contador - 1;
    end;
-ShowAlert('Transfer Sucessfull');
+ShowAlert('Transfer Sucessfull'+SLINEBREAK+
+          'Sent   : '+Int2CurrencyStr(Monto)+SLINEBREAK+
+          'Fee    : '+Int2CurrencyStr(comision)+SLINEBREAK+
+          'Total  : '+Int2CurrencyStr(MontoMasComision)+SLINEBREAK+
+          'To     : '+Destination+SLINEBREAK+
+          'Concept: '+Concepto);
+EditSFDesti.Text := '';EditSFAmount.Text:='';EditConcept.Text:='';
 End;
 
 // SHOWS THE BLOSKCUM ARRAY
@@ -513,6 +524,13 @@ if not IsValidInt(GetParameterFromCommandLine(linetext,1)) then
    exit;
    end;
 PortNumber := GetParameterFromCommandLine(linetext,1);
+if StrToInt(PortNumber) < 1 then
+   begin
+   OutPutText('ERROR: Invalid Parameter: '+GetParameterFromCommandLine(linetext,1),false);
+   EditUserPort.Text := OptionsData.ListeningPort;
+   ShowMensaje(false);
+   exit;
+   end;
 OptionsData.ListeningPort:=PortNumber;
 OutPutText('New Listening port set'+SLineBreak+'Change will be effective on next connection',false);
 U_SaveOptions := true;

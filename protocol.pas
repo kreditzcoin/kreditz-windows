@@ -5,10 +5,11 @@ unit Protocol;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, Master, CM_Crypto, CommandLineParser, TimeUnit, Blocks,
+  Classes, SysUtils, StrUtils, Master, CM_Crypto, CommandLineParser, Blocks,
   IdGlobal, Zipper;
 
 function IsValidProtocol(line:String):Boolean;
+function JoinString():String;
 procedure ParseProtocolConnection(Lines:TStringList;Slot:int64);
 procedure PTC_Join(TextLine:String;slot:int64;Answer:boolean);
 procedure PTC_ServerClose(slot:int64);
@@ -22,15 +23,17 @@ procedure AddPendingByTimestamp(Pending:String);
 procedure PTC_Newblock(TextLine:String);
 procedure SendAccDataFile(slot:int64);
 procedure PTC_TRFR(Textline:string;slot:int64);
+function TrxExistsInLastBlock(hash:String):boolean;
+function GetNodesString():string;
 procedure PTC_GetNodes(Textline:string;slot:int64);
 procedure PTC_SaveNodes(Textline:string;slot:int64);
 function GetComisionValue(Monto:int64):int64;
-function SendFundsFromAddress(Destination:String; AddressIndex,Restante:int64):int64;
+function SendFundsFromAddress(Destination:String; AddressIndex,Restante:int64;concepto:string):int64;
 function GetAddressPaymentsOnPending(Address:String):Int64;
-Procedure PTC_SendZipedBlocks(textline:string;slot:int64);
+procedure PTC_SendZipedBlocks(textline:string;slot:int64);
 procedure UnzipBlockFile(filename:String);
 function GetCharsFromMinerDiff(minerdiff:string):int64;
-Function GetStepsFromMinerDiff(minerdiff:string):int64;
+function GetStepsFromMinerDiff(minerdiff:string):int64;
 function GetNodeFromString(DataString:String):NodeData;
 procedure PTC_InBlRe(Textline:string;slot:int64);
 
@@ -47,6 +50,26 @@ Begin
 Start := copy(line,1,4);finish:= copy(line,length(line)-3,4);
 if ((start='{MIC') and (finish='END}')) then result := true
 else result := false;
+End;
+
+// RETURNS THE STRING FOR JOIN MESSAGES
+function JoinString():String;
+var
+  PortData : String;
+Begin
+if Form1.IdTCPServer1.Active=false then PortData := '-'+OptionsData.ListeningPort
+else PortData := OptionsData.ListeningPort;
+result :='{MIC JOIN '+
+   IntTostr(GetTotalConex)+' '+
+   GetTimeStamp()+' '+
+   IntToStr(LOCAL_MyLastBlock)+' '+
+   LOCAL_LastBlockHash+' '+
+   IntToStr(LOCAL_MyLastAccount)+' '+
+   IntToStr(PendingTXs.Count)+' '+
+   PortData+' '+
+   LOCAL_MyAccsumHash+' '+
+   MAIN_Version+
+   ' END}'
 End;
 
 // PARSES A PROTOCOL LINE
@@ -86,16 +109,22 @@ end;
 // HELLO MESSAGES BETWEN PEERS
 Procedure PTC_Join(TextLine:String;slot:int64;Answer:boolean);
 var
-  conections,block,lastblockhash,account,pending,port,accsumhash:String;
+  conections,block,lastblockhash,account,pending,port,accsumhash,version:String;
+  peertime : string;
+  Listening : boolean;
 Begin
 STATUS_IncomingPings := STATUS_IncomingPings+1;
 conections := GetParameterFromCommandLine(TextLine,1);
+peertime := GetParameterFromCommandLine(TextLine,2);
 block := GetParameterFromCommandLine(TextLine,3);
 lastblockhash := GetParameterFromCommandLine(TextLine,4);
 account := GetParameterFromCommandLine(TextLine,5);
 pending := GetParameterFromCommandLine(TextLine,6);
 port := GetParameterFromCommandLine(TextLine,7);
+if AnsiContainsStr(Port,'-') then listening := false else listening := true;
+port := StringReplace(port,'-','',[rfReplaceAll, rfIgnoreCase]);
 accsumhash := GetParameterFromCommandLine(TextLine,8);
+version := GetParameterFromCommandLine(TextLine,9);
 if not IsValidInt(conections) then exit;
 conexiones[slot].Autentic:=true;
 conexiones[slot].Connections:=StrToInt(conections);
@@ -106,20 +135,14 @@ conexiones[slot].Pending:=pending;
 conexiones[slot].ListenPort:=port;
 conexiones[slot].lastping:=GetTimeStamp();
 conexiones[slot].AccountsHash:=accsumhash;
+conexiones[slot].Version:=version;
+conexiones[slot].Listening:=listening;
+conexiones[slot].offset:= IntToStr(abs(StrToInt64(peertime)-StrToInt64(GetTimeStamp())));
 if not NodeExists(conexiones[slot].ip,conexiones[slot].ListenPort) then
    AddNewNode(conexiones[slot].ip,conexiones[slot].ListenPort);
 if Answer then
    Begin
-   SendPTCMessage(slot,'{MIC JOIR '+
-   IntTostr(GetTotalConex)+' '+
-   GetTimeStamp()+' '+
-   IntToStr(LOCAL_MyLastBlock)+' '+
-   LOCAL_LastBlockHash+' '+
-   IntToStr(LOCAL_MyLastAccount)+' '+
-   IntToStr(PendingTXs.Count)+' '+
-   OptionsData.ListeningPort+' '+
-   LOCAL_MyAccsumHash+
-   ' END}');
+   SendPTCMessage(slot,StringReplace(JoinString(),'JOIN','JOIR',[rfReplaceAll, rfIgnoreCase]));
    end;
 STATUS_LastPing := StrToInt64(copy(conexiones[slot].lastping,1,10));
 end;
@@ -356,7 +379,7 @@ End;
 // PROCESS A TRANSFER REQUEST
 procedure PTC_TRFR(Textline:string;slot:int64);
 var
-  TimeStamp, Sender, Destination, Monto, SigHash, OpHash : String;
+  TimeStamp, Sender, Destination, Monto, SigHash, OpHash, concepto : String;
   Proceder : Boolean = true;
 Begin
 TimeStamp := GetParameterFromCommandLine(Textline,1);
@@ -365,9 +388,11 @@ Destination := GetParameterFromCommandLine(Textline,3);
 Monto := GetParameterFromCommandLine(Textline,4);
 SigHash := GetParameterFromCommandLine(Textline,5);
 OpHash := GetParameterFromCommandLine(Textline,6);
+concepto := GetParameterFromCommandLine(Textline,7);
 if GetAddressBalanceFromDisk(Sender)-GetAddressPaymentsOnPending(sender) < StrToInt64(Monto) then Proceder := false;
 if TranxAlreadyPending('TRFR',OpHash,7) then Proceder := false;
-// if sighash is invalid then proceder := false;
+if StrToInt64(TimeStamp) < StrToInt64(GetBlockData(BlockSumLastBlock()).TimeStart) then exit;
+if TrxExistsInLastBlock(OpHash) then exit;
 if not VerifySignedString(TimeStamp+Sender+Destination+Monto,SigHash,GetAddressPubKey(Sender)) then exit;
 if proceder then
    begin
@@ -376,6 +401,22 @@ if proceder then
    OutGoingMessages.Add(Textline);
    end;
 End;
+
+// RETURNS IF A TRXID WAS ADDED IN THE LAST BLOCK
+function TrxExistsInLastBlock(hash:String):boolean;
+var
+  counter : integer;
+Begin
+result := false;
+for counter := 0 to LASTBLOCK_TrxsIDs.Count-1 do
+   begin
+   if LASTBLOCK_TrxsIDs[counter] = hash then
+      begin
+      result := true;
+      exit;
+      end;
+   end;
+end;
 
 // RETURNS THE COMISION FOR A TRANSACTION
 function GetComisionValue(Monto:int64):int64;
@@ -388,7 +429,7 @@ result := value;
 End;
 
 // SEND THE FUNDS FROM AN SPECIFIED ADDRESS
-function SendFundsFromAddress(Destination:string; AddressIndex,Restante:int64):int64;
+function SendFundsFromAddress(Destination:string; AddressIndex,Restante:int64;concepto:string):int64;
 var
   MontoFinal : Int64;
   TimeStamp,Sender, SignedHash, TrxHash : String;
@@ -407,6 +448,7 @@ Destination+' '+
 IntToStr(MontoFinal)+' '+
 SignedHash+' '+
 TrxHash+' '+
+Concepto+' '+
 'END}');
 Result := MontoFinal;
 End;
@@ -510,8 +552,8 @@ Lettra := minerdiff[2];
 Result := Ord(Lettra)-96;
 End;
 
-// SEND THE NODES TO PEER
-procedure PTC_GetNodes(Textline:string;slot:int64);
+// RETURNS THE STRING WITH THE FIRST 50 NODES
+function GetNodesString():string;
 var
   NodesString : String = '';
   NodesAdded : integer = 0;
@@ -524,6 +566,15 @@ for counter := 0 to length(ArrayNodos)-1 do
    if NodesAdded>50 then break;
    end;
 NodesString := '{MIC NODES'+NodesString+' END}';
+result := NodesString;
+End;
+
+// SEND THE NODES TO PEER
+procedure PTC_GetNodes(Textline:string;slot:int64);
+var
+  NodesString : String = '';
+Begin
+NodesString := GetNodesString();
 SendPTCMessage(slot,NodesString);
 End;
 

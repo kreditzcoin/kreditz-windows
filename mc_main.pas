@@ -7,8 +7,8 @@ interface
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Menus, ComCtrls, grids, IdTCPServer, IdContext, IdTCPClient, IdTime,
-  master, LCLType, CommandLineParser, CM_Crypto, Protocol, TimeUnit, strutils,
-  Blocks, Clipbrd,
+  master, LCLType, CommandLineParser, CM_Crypto, Protocol, strutils,
+  Blocks, Clipbrd, dateutils,
   IdComponent, IdTCPConnection, IdBaseComponent, IdGlobal, IdCustomTCPServer;
 
 type
@@ -53,6 +53,7 @@ type
 
     Procedure ButtonMaxAmoOnClick(Sender: TObject);
     Procedure ButtonSendFundsOnClick(Sender: TObject);
+    Procedure ButtonDetailsOnClick(Sender: TObject);
     Procedure CheckBoxConnectOnChange(Sender: TObject);
     Procedure CheckBoxMinerOnChange(Sender: TObject);
     procedure GridAddressesPrepareCanvas(sender: TObject; aCol, aRow: integer; aState: TGridDrawState);
@@ -173,16 +174,7 @@ if U_RebuildMyTxs then
    end;
 if NETWORK_SendPing then
    begin
-   OutGoingMessages.Add('{MIC JOIN '+
-   IntTostr(GetTotalConex)+' '+
-   GetTimeStamp()+' '+
-   IntToStr(LOCAL_MyLastBlock)+' '+
-   LOCAL_LastBlockHash+' '+
-   IntToStr(LOCAL_MyLastAccount)+' '+
-   IntToStr(PendingTXs.Count)+' '+
-   OptionsData.ListeningPort+' '+
-   LOCAL_MyAccsumHash+
-   ' END}');
+   OutGoingMessages.Add(JoinString());
    NETWORK_SendPing := false;
    end;
 {Process the command lines}
@@ -351,16 +343,7 @@ for contador := 1 to CONST_MAXConections do
       ReadClientLines(strtoint64(conexiones[contador].ClientConn),contador);
       if strtoint64(GetTimeStamp()) > strtoint64(conexiones[contador].lastping)+5000 then
          begin
-         SendPTCMessage(contador,'{MIC JOIN '+
-         IntTostr(GetTotalConex)+' '+
-         GetTimeStamp()+' '+
-         IntToStr(LOCAL_MyLastBlock)+' '+
-         LOCAL_LastBlockHash+' '+
-         IntToStr(LOCAL_MyLastAccount)+' '+
-         IntToStr(PendingTXs.Count)+' '+
-         OptionsData.ListeningPort+' '+
-         LOCAL_MyAccsumHash+
-         ' END}');
+         SendPTCMessage(contador,JoinString());
          end;
       end;
    if conexiones[contador].tipo <> '' then
@@ -486,6 +469,7 @@ if AreWeConnectedTo(IPUser) then
    end;
 if SaveConection('client',IPUser,GetTimeStamp(),Acontext,'0') = 0 then // ZERO BECAUSE INCOMING
    begin                                                               // NOT USE CLIENT CHANNEL
+   AContext.Connection.IOHandler.WriteLn(GetNodesString);
    AContext.Connection.Disconnect;
    OutputText('Unable to keep conection: '+IPUser);
    Acontext.Connection.IOHandler.InputBuffer.Clear;
@@ -610,6 +594,7 @@ ABitmap := TBitmap.Create;
 // NON-VISUAL COMPONENTS -> FORM
 PendingTXs := TStringlist.Create;
 LASTBLOCK_PendingTxs := TStringlist.Create;
+LASTBLOCK_TrxsIDs := TStringlist.Create;
 MainMemoStrings := TStringlist.Create;
 OutGoingMessages := TStringlist.Create;
 ProcessLines := TStringlist.Create;
@@ -893,15 +878,16 @@ PanelNetwork.Visible:=false;
       LabelPanConxs.Left:=275;LabelPanConxs.Top:=4;
 
       GridConxs := TStringGrid.Create(Form1);GridConxs.Parent:=PanelConexs;
-      GridConxs.Left:=8;GridConxs.Top:=22;GridConxs.Height:=126;GridConxs.Width:=596;
-      GridConxs.ColCount:=6;GridConxs.rowcount:=CONST_MAXConections+1;
+      GridConxs.Left:=105;GridConxs.Top:=22;GridConxs.Height:=126;GridConxs.Width:=402;
+      GridConxs.ColCount:=9;GridConxs.rowcount:=CONST_MAXConections+1;
       GridConxs.Font.Name:='consolas';GridConxs.Font.Size:=8;
       GridConxs.FixedCols:=0;GridConxs.FixedRows:=1;
       GridConxs.Options:= GridConxs.Options+[goRowSelect];
       GridConxs.ScrollBars:=ssvertical;GridConxs.AutoSize:=true;
       GridConxs.Cells[0,0]:='#';GridConxs.Cells[1,0]:='IP';GridConxs.Cells[2,0]:='Type';
-      GridConxs.Cells[3,0]:='LastBlock';GridConxs.Cells[4,0]:='LBHash';
-      ;GridConxs.Cells[5,0]:='AccSumHash';
+      GridConxs.Cells[3,0]:='LB';GridConxs.Cells[4,0]:='LBH';
+      GridConxs.Cells[5,0]:='ASH';GridConxs.Cells[6,0]:='Version';
+      GridConxs.Cells[7,0]:='SRV';GridConxs.Cells[8,0]:='Diff';
       GridConxs.OnPrepareCanvas:= @GridConxsPrepareCanvas;
 
    PanelOptions := TScrollBox.Create(Form1);PanelOptions.Parent:=PanelNetwork;
@@ -996,8 +982,7 @@ PanelNetwork.Visible:=false;
       CheckBoxMinned.ShowHint:=true;CheckBoxMinned.Hint:='Check to show minned blocks as Trxs';
       CheckBoxMinned.Visible:=true;CheckBoxMinned.OnChange:=@CheckBoxMinnedOnChange;
 
-
-// END VISUAL COMPONENTS -> PANEL NODES
+// END VISUAL COMPONENTS -> PANEL NETWORK
 
 // VISUAL COMPONENTES -> PANEL WALLET
 PanelWallet := TPanel.Create(Form1);PanelWallet.Parent:=form1;
@@ -1095,10 +1080,22 @@ PanelWallet.Visible:=true;
       EditSFAmount.Visible:=true;EditSFAmount.Alignment:=taRightJustify;
       EditSFAmount.OnChange:=@EditSFAmountOnChange;
 
+      LabelConcept := TLabel.Create(Form1);LabelConcept.Parent:=PanelSendFunds;
+      LabelConcept.Caption:='Concept';LabelConcept.Font.Size:=8;
+      LabelConcept.Font.Name:='consolas';
+      LabelConcept.Left:=8;LabelConcept.Top:=66;
+
+      EditConcept := TEdit.Create(Form1); EditConcept.Parent:=PanelSendFunds;
+      EditConcept.Font.Name:='consolas';EditConcept.Font.Size:=8;
+      EditConcept.Left:=112;EditConcept.Top:=62;EditConcept.Height:=12;EditConcept.Width:=258;
+      EditConcept.Color:=clBlack;EditConcept.Font.Color:=clWhite;
+      EditConcept.Visible:=true;EditConcept.Alignment:=taRightJustify;
+
+
       LabelCorAmo := TLabel.Create(Form1);LabelCorAmo.Parent:=PanelSendFunds;
       LabelCorAmo.Caption:='0,00';LabelCorAmo.Font.Size:=8;
       LabelCorAmo.Font.Name:='consolas';LabelCorAmo.Alignment:=taRightJustify;
-      LabelCorAmo.Left:=344;LabelCorAmo.Top:=66;
+      LabelCorAmo.Left:=344;LabelCorAmo.Top:=86;
 
       ButtonSendFunds := TButton.Create(Form1);ButtonSendFunds.Parent:=PanelSendFunds;
       ButtonSendFunds.Left:=160;ButtonSendFunds.Top:=124;
@@ -1119,20 +1116,29 @@ PanelWallet.Visible:=true;
 
    GrisUserTrxs := TStringGrid.Create(Form1);GrisUserTrxs.Parent:=PanelWallet;
    GrisUserTrxs.Left:=388;GrisUserTrxs.Top:=206;GrisUserTrxs.Height:=144;
-   GrisUserTrxs.Width:=232;GrisUserTrxs.ColCount:=2;GrisUserTrxs.rowcount:=1;
+   GrisUserTrxs.Width:=232;GrisUserTrxs.ColCount:=8;GrisUserTrxs.rowcount:=1;
    GrisUserTrxs.FixedCols:=0;GrisUserTrxs.FixedRows:=1;
    GrisUserTrxs.Font.Name:='consolas';
    GrisUserTrxs.ScrollBars:=ssvertical;GrisUserTrxs.Font.Size:=10;
    GrisUserTrxs.Cells[0,0]:='Block';GrisUserTrxs.ColWidths[0]:= 50;
    GrisUserTrxs.Cells[1,0]:='Amount';GrisUserTrxs.ColWidths[1]:= 160;
+   GrisUserTrxs.Cells[2,0]:='TrxID';GrisUserTrxs.ColWidths[2]:= 1;
+   GrisUserTrxs.Cells[3,0]:='Type';GrisUserTrxs.ColWidths[3]:= 1;
    GrisUserTrxs.OnPrepareCanvas:= @GrisUserTrxsPrepareCanvas;
    GrisUserTrxs.Options:= GrisUserTrxs.Options+[goRowSelect];
+
+      ButtonDetails := TButton.Create(Form1);ButtonDetails.Parent:=GrisUserTrxs;
+      ButtonDetails.Left:=62;ButtonDetails.Top:=1;
+      ButtonDetails.Height:=18;ButtonDetails.Width:=60;
+      ButtonDetails.Caption:='Details';ButtonDetails.Font.Name:='consolas';
+      ButtonDetails.Visible:=true;ButtonDetails.OnClick:=@ButtonDetailsOnClick;
+      ButtonDetails.ShowHint:=true;ButtonDetails.Hint:='Show transaction details';
 
 // END VISUAL COMPONENTS -> PANEL WALLET
 
 // FORM NOTIFY
 FormNotify := Tform.Create(Form1);
-FormNotify.Height:=200;FormNotify.Width:=320;
+FormNotify.Height:=200;FormNotify.Width:=360;
 FormNotify.Position:=poOwnerFormCenter;
 FormNotify.Caption:='Kreditz Wallet';
 FormNotify.BorderStyle:=bsDialog;
@@ -1140,14 +1146,15 @@ FormNotify.BorderIcons:=[];
 FormNotify.Visible:=false;
 FormNotify.PopupParent := Self;
 
-   LabelNotify := TStaticText.Create(Form1);LabelNotify.Parent:=FormNotify;
-   LabelNotify.Caption:='';LabelNotify.Font.Size:=12;
-   LabelNotify.Height:=150;LabelNotify.Width:=300;
-   LabelNotify.Font.Name:='consolas';LabelNotify.Alignment:=taCenter;
-   LabelNotify.Left:=10;LabelNotify.Top:=10;LabelNotify.AutoSize:=false;
+   MemoNotify := TMemo.Create(Form1);MemoNotify.Parent:=FormNotify;
+   MemoNotify.Font.Size:=10;MemoNotify.ReadOnly:=true;
+   MemoNotify.Color:=clForm;MemoNotify.BorderStyle:=bsNone;
+   MemoNotify.Height:=150;MemoNotify.Width:=340;
+   MemoNotify.Font.Name:='consolas';MemoNotify.Alignment:=taLeftJustify;
+   MemoNotify.Left:=10;MemoNotify.Top:=10;MemoNotify.AutoSize:=false;
 
    ButtonCloseNotify := TButton.Create(FormNotify);ButtonCloseNotify.Parent:=FormNotify;
-   ButtonCloseNotify.Left:=130;ButtonCloseNotify.Top:=170;
+   ButtonCloseNotify.Left:=150;ButtonCloseNotify.Top:=170;
    ButtonCloseNotify.Height:=24;ButtonCloseNotify.Width:=60;
    ButtonCloseNotify.Caption:='Close';ButtonCloseNotify.Font.Name:='consolas';
    ButtonCloseNotify.Font.Size:=12;
@@ -1295,8 +1302,47 @@ End;
 // CLICK TO SEND FUNDS
 Procedure TForm1.ButtonSendFundsOnClick(Sender: TObject);
 Begin
-ProcessLines.Add('SENDTO '+EditSFDesti.Text+' '+EditSFAmount.Text);
-EditSFDesti.Text := '';EditSFAmount.Text:='';
+ProcessLines.Add('SENDTO '+EditSFDesti.Text+' '+EditSFAmount.Text+' '+EditConcept.text);
+End;
+
+// CLICK TO SHOW TRX DETAILS
+Procedure TForm1.ButtonDetailsOnClick(Sender: TObject);
+var
+  DetString, trfrmsg : String;
+  trxtipo, amount, blockN,sendera,receiver,trxhash,timestamp , concepto: String;
+Begin
+if GrisUserTrxs.Row > 0 then
+   begin
+   blockN := GrisUserTrxs.Cells[0,GrisUserTrxs.Row];
+   amount := GrisUserTrxs.Cells[1,GrisUserTrxs.Row];
+   trxhash := GrisUserTrxs.Cells[2,GrisUserTrxs.Row];
+   trxtipo := GrisUserTrxs.Cells[3,GrisUserTrxs.Row];
+   sendera := GrisUserTrxs.Cells[4,GrisUserTrxs.Row];
+   receiver := GrisUserTrxs.Cells[5,GrisUserTrxs.Row];
+   timestamp:= GrisUserTrxs.Cells[6,GrisUserTrxs.Row];
+   concepto := GrisUserTrxs.Cells[7,GrisUserTrxs.Row];
+   if trxtipo = 'MINE' then
+      begin
+      DetString:= 'Type  : Block Mined'+SLINEBREAK+
+                  'Block : '+blockN+SLINEBREAK+
+                  'Reward: '+amount+SLINEBREAK+
+                  'Time  : '+TimestampToDate(TimeStamp);
+      end;
+   if trxtipo = 'TRFR' then
+      begin
+      if IsAddressMine(sendera) > -1 then trfrmsg := 'Transfer sent'
+      else trfrmsg := 'Transfer received';
+      DetString:= 'Type    : '+trfrmsg+SLINEBREAK+
+                  'Block   : '+blockN+SLINEBREAK+
+                  'Sender  : '+sendera+SLINEBREAK+
+                  'Receiver: '+receiver+SLINEBREAK+
+                  'Amount  : '+amount+SLINEBREAK+
+                  'Concept : '+concepto+SLINEBREAK+
+                  'Time    : '+TimestampToDate(TimeStamp)+SLINEBREAK+
+                  'TrxID   : '+trxhash;
+      end;
+   ShowAlert(DetString);
+   end;
 End;
 
 //DRAW GRIDADDRESSES
@@ -1389,7 +1435,8 @@ End;
 // SHOW NOTIFY FORM
 Procedure ShowAlert(Message:String);
 Begin
-LabelNotify.Caption:=Message;
+MemoNotify.lines.Clear;
+MemoNotify.lines.Add(Message);
 FormNotify.Show;
 sysutils.beep();
 Form1.Enabled:=false;
@@ -1412,7 +1459,7 @@ Form1.Show;
 MAIN_MinOnTray := false;
 End;
 
-// CHANGE USER LISTINENGIN PORT
+// CHANGE USER LISTENING PORT
 Procedure TForm1.EditUserPortOnEditingDone(Sender: TObject);
 Begin
 if not MAIN_ProgramStarted then exit;

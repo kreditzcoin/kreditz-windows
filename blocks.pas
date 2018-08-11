@@ -5,7 +5,7 @@ unit Blocks;
 interface
 
 uses
-  Classes, SysUtils,Forms, MAster, TimeUnit, CM_Crypto, commandlineparser,Dialogs,
+  Classes, SysUtils,Forms, MAster, CM_Crypto, commandlineparser,Dialogs,
   fileutil;
 
 function BuildNewBlock(blNumber:int64;TimeStamp,Account,Solution,NewBlHash, TargetHash,difficulty:String): boolean;
@@ -20,14 +20,13 @@ procedure SetAddressPubKey(Address,PubKey:String;block:int64);
 function GetNegativeValue(number:int64):int64;
 procedure CreateBlockZero();
 function UndoneLastBlock(BlNumber:int64 = -1):Boolean;
-procedure LBData();
 
 implementation
 
 Uses
   MC_Main, Protocol;
 
-// BUILDS A NEW BLOCK GetTimeStamp
+// BUILDS A NEW BLOCK
 function BuildNewBlock(blNumber:int64;TimeStamp,Account,Solution,NewBlHash,TargetHash,difficulty:String): boolean;
 var
   TrxData : TranxData;
@@ -57,6 +56,7 @@ TransfersList := TStringlist.Create;
 IgnoredTrxs := TStringlist.Create;
 AcresList := TStringlist.Create;
 LASTBLOCK_PendingTxs.Clear;
+LASTBLOCK_TrxsIDs.Clear;
 filename := CONST_DIRBLOCKS+IntToStr(BlNumber)+'.blk';
 // Create array with Txs *****
 if PendingTXs.Count > 0 then
@@ -102,6 +102,7 @@ if PendingTXs.Count > 0 then
          TrxData.Ammount:= GetParameterFromCommandLine(TextLine,4);
          TrxData.Signature:= GetParameterFromCommandLine(TextLine,5);
          TrxData.hash:=GetParameterFromCommandLine(TextLine,6);
+         TrxData.Concept:=GetParameterFromCommandLine(TextLine,7);
            ThisTrxFee := GetComisionValue(StrToInt64(TrxData.Ammount));
            TrxData.Ammount := IntToStr(StrToInt64(TrxData.Ammount)-ThisTrxFee);
          MinerFee := MinerFee + ThisTrxFee;
@@ -109,6 +110,7 @@ if PendingTXs.Count > 0 then
          TransfersList.Add('TRFR '+TrxData.Sender+' '+IntToStr(GetNegativeValue(StrToInt64(TrxData.Ammount)+ThisTrxFee)));
          SetLength(ArrBlockTxs,Length(ArrBlockTxs)+1);
          ArrBlockTxs[Length(ArrBlockTxs)-1] := TrxData;
+         LASTBLOCK_TrxsIDs.Add(TrxData.hash);
          end;
       end;
    end;
@@ -460,11 +462,6 @@ OutPutText('BLOCK '+IntToStr(BlNumber)+' Undone');
 Result := True;
 End;
 
-// SHOWS LAST BLOCK DATA
-Procedure LBData();
-Begin
-// to be implemented
-end;
 
 END. // END UNIT
 
