@@ -7,8 +7,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, MC_Main, indylaz, master, CM_Crypto, commandlineparser, Protocol,
-  blocks;
+  Forms, MC_Main, indylaz, master;
 
 {$R *.res}
 

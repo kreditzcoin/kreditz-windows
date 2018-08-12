@@ -7,8 +7,8 @@ interface
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Menus, ComCtrls, grids, IdTCPServer, IdContext, IdTCPClient, IdTime,
-  master, LCLType, CommandLineParser, CM_Crypto, Protocol, strutils,
-  Blocks, Clipbrd, dateutils,
+  master, LCLType, strutils,
+  Clipbrd, dateutils,
   IdComponent, IdTCPConnection, IdBaseComponent, IdGlobal, IdCustomTCPServer;
 
 type
@@ -795,7 +795,7 @@ PanelNetwork.Visible:=false;
    LabelPanNodes := TLabel.Create(Form1);LabelPanNodes.Parent:=PanelNetwork;
    LabelPanNodes.Caption:='NODES';LabelPanNodes.Font.Size:=11;
    LabelPanNodes.Font.Name:='consolas';
-   LabelPanNodes.Left:=68;LabelPanNodes.Top:=10;
+   LabelPanNodes.Left:=78;LabelPanNodes.Top:=10;
 
    GridNodes := TStringGrid.Create(Form1);GridNodes.Parent:=PanelNetwork;
    GridNodes.Left:=8;GridNodes.Top:=28;GridNodes.Height:=136;GridNodes.Width:=172;
@@ -851,7 +851,7 @@ PanelNetwork.Visible:=false;
    LabelPanBLNodes := TLabel.Create(Form1);LabelPanBLNodes.Parent:=PanelNetwork;
    LabelPanBLNodes.Caption:='BLACKLISTED';LabelPanBLNodes.Font.Size:=11;
    LabelPanBLNodes.Font.Name:='consolas';
-   LabelPanBLNodes.Left:=195;LabelPanBLNodes.Top:=10;
+   LabelPanBLNodes.Left:=205;LabelPanBLNodes.Top:=10;
 
    GridBLNodes := TStringGrid.Create(Form1);GridBLNodes.Parent:=PanelNetwork;
    GridBLNodes.Left:=190;GridBLNodes.Top:=28;GridBLNodes.Height:=136;GridBLNodes.Width:=122;
@@ -890,8 +890,13 @@ PanelNetwork.Visible:=false;
       GridConxs.Cells[7,0]:='SRV';GridConxs.Cells[8,0]:='Diff';
       GridConxs.OnPrepareCanvas:= @GridConxsPrepareCanvas;
 
+   LabelOptions := TLabel.Create(Form1);LabelOptions.Parent:=PanelNetwork;
+   LabelOptions.Caption:='OPTIONS';LabelOptions.Font.Size:=11;
+   LabelOptions.Font.Name:='consolas';
+   LabelOptions.Left:=435;LabelOptions.Top:=10;
+
    PanelOptions := TScrollBox.Create(Form1);PanelOptions.Parent:=PanelNetwork;
-   PanelOptions.Left:=320;PanelOptions.Top:=8;PanelOptions.Height:=176;
+   PanelOptions.Left:=320;PanelOptions.Top:=28;PanelOptions.Height:=156;
    PanelOptions.Width:=300;
    PanelOptions.Color:=clWhite;
    PanelOptions.Visible:=true;
