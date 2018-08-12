@@ -17,3 +17,7 @@ To do list before official release:
 How to built.
 - Download lazarus IDE from https://www.lazarus-ide.org/index.php?page=downloads
 - Install lazarus
+- Run lazarus. Package > Online Package Manager.
+- Select 2 packages: DCPcrypt and Indy10; then click install.
+- File > Open > Select the .LPI file from this repository.
+- To compile, just click CTRL+F9; it will create the .EXE file in the same folder
