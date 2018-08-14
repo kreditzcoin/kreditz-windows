@@ -4,7 +4,7 @@ Kreditz Windows Wallet
 Unofficial Release
 Ver 0.180814
 
-THIS VERSION IS INCOMPLETE YET
+-- THIS VERSION IS INCOMPLETE: Some features not added yet.
 
 Requirements:
 - Library Indy 10
