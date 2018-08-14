@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <PathDelim Value="\"/>
+    <Version Value="10"/>
+    <BuildModes Active="Default"/>
+    <Units Count="5">
+      <Unit0>
+        <Filename Value="Kreditz.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="20"/>
+      </Unit0>
+      <Unit1>
+        <Filename Value="k_mainform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Form1"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="K_MainForm"/>
+        <TopLine Value="1255"/>
+        <CursorPos Y="1293"/>
+        <FoldState Value=" T3j30G4 pmSnG0I2 pj9ja073 piejG0#kR p0uP07E]Ifk7034]aI]a8AU"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="k_master.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="K_Master"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="355"/>
+        <CursorPos X="36" Y="388"/>
+        <FoldState Value=" T3tI083 pkKl1034 pibjG0A6]9ZjN0D7]9ejg0G5]9gjb09[a6I0T[I4fk6056[R5P0B3[95Q09]Rj2jT0c[+5kG0G[I4JkE0Q4]9VkX03]smbnM0I[s4YjL0D6]R7k20n[96Y0H7[{R5Z0H3[+550K8]94k80K]\id]R35 pjMk00m4[{R5H0A]9jDjg07[s40jJ0Q6 pjfl20G]9if]sM4[}w5T06[96D042"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit2>
+      <Unit3>
+        <Filename Value="Information\Readme.txt"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="61"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="None"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="Information\todo.txt"/>
+        <EditorIndex Value="3"/>
+        <CursorPos X="44" Y="24"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="None"/>
+      </Unit4>
+    </Units>
+    <JumpHistory Count="8" HistoryIndex="7">
+      <Position1>
+        <Filename Value="k_mainform.pas"/>
+        <Caret Line="6" Column="19"/>
+      </Position1>
+      <Position2>
+        <Filename Value="k_mainform.pas"/>
+        <Caret Line="14" Column="40"/>
+      </Position2>
+      <Position3>
+        <Filename Value="k_mainform.pas"/>
+        <Caret Line="15" Column="38"/>
+      </Position3>
+      <Position4>
+        <Filename Value="k_mainform.pas"/>
+        <Caret Line="1174" TopLine="1171"/>
+      </Position4>
+      <Position5>
+        <Filename Value="k_mainform.pas"/>
+        <Caret Line="92" TopLine="89"/>
+      </Position5>
+      <Position6>
+        <Filename Value="k_master.pas"/>
+        <Caret Line="524" Column="28" TopLine="3921"/>
+      </Position6>
+      <Position7>
+        <Filename Value="k_master.pas"/>
+        <Caret Line="3116" Column="58" TopLine="3096"/>
+      </Position7>
+      <Position8>
+        <Filename Value="k_master.pas"/>
+        <Caret Line="3113" Column="47" TopLine="3096"/>
+      </Position8>
+    </JumpHistory>
+  </ProjectSession>
+</CONFIG>
